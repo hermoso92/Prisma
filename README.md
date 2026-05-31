@@ -1,5 +1,7 @@
 # Prisma
 
+[![CI](https://github.com/hermoso92/Prisma/actions/workflows/ci.yml/badge.svg)](https://github.com/hermoso92/Prisma/actions/workflows/ci.yml)
+
 > Tu **cerebro de contexto personal**: un asistente que conoce todo tu mundo digital
 > —chats de ChatGPT y Claude, WhatsApp, notas, fotos y vídeos— lo entiende, lo
 > indexa y te deja preguntarle cualquier cosa sobre tu propia vida.

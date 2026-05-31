@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    name: tests (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+        include:
+          # Mac-first: validamos también en macOS (con la versión más reciente).
+          - os: macos-latest
+            python-version: "3.12"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install (editable)
+        run: python -m pip install -e .
+
+      - name: Syntax check
+        run: python -m compileall -q prisma
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: CLI smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          prisma --version
+          export PRISMA_HOME="$RUNNER_TEMP/prisma"
+          prisma init
+          prisma ingest --importer jsonl examples/sample.jsonl
+          prisma index --embedder hashing
+          prisma search "mudanza" --semantic --embedder hashing --limit 1
+          prisma stats
+          # Handshake del servidor MCP por stdio.
+          printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
+            | prisma mcp --embedder hashing 2>/dev/null \
+            | grep -q '"name": "prisma"' && echo "MCP handshake OK"
