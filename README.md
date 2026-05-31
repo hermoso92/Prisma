@@ -107,7 +107,7 @@ Para la "magia" de describir fotos en local: `brew install ollama && ollama pull
 prisma connect whatsapp     # te explica cómo exportar (paso a paso, ameno)
 prisma connect chatgpt      # idem para cada fuente
 prisma ingest --importer whatsapp ~/_chat.txt --me "Tu Nombre"
-prisma ingest --importer photos ~/Pictures --analyzer ollama
+prisma ingest --importer photos ~/Pictures --analyzer local   # visión + OCR + audio
 prisma index                          # genera embeddings locales (Ollama)
 prisma search "lo del viaje" --semantic   # busca por significado, no por palabra
 prisma search "contrato"              # búsqueda literal (rápida, sin index)
@@ -202,7 +202,10 @@ prisma/
   analysis/
     base.py            # interfaz Analyzer (caption/OCR/transcripción) + registro
     null.py            # analizador por defecto (no analiza; solo metadatos)
-    ollama.py          # IA local gratuita: describe imágenes con Ollama (llava)
+    ollama.py          # visión local: describe imágenes con Ollama (llava)
+    ocr.py             # OCR local: texto dentro de imágenes con Tesseract
+    whisper.py         # transcripción local de audio/vídeo con Whisper
+    local.py           # compuesto: visión + OCR + transcripción (todo local)
     exif.py            # parser EXIF mínimo sin dependencias (fecha + GPS)
   embeddings/
     base.py            # interfaz Embedder + registro
@@ -211,7 +214,7 @@ prisma/
   mcp/
     server.py          # servidor MCP (JSON-RPC sobre stdio) que expone tu contexto
 examples/sample.jsonl  # datos de ejemplo multi-fuente
-tests/                 # tests (Fases 0–5): 79 casos
+tests/                 # tests (Fases 0–5 + Whisper/OCR): 88 casos
 docs/ARCHITECTURE.md   # diseño técnico completo
 ```
 

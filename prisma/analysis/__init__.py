@@ -5,7 +5,10 @@ se aísla detrás de la interfaz :class:`Analyzer`, de modo que se pueda elegir 
 backend sin tocar el pipeline:
 
 - **null** (por defecto: no analiza; útil para ingerir rápido o sin dependencias),
-- **ollama** (IA local y gratuita: describe imágenes con un modelo de visión).
+- **ollama** (describe imágenes con un modelo de visión local),
+- **ocr** (Tesseract: texto dentro de imágenes),
+- **whisper** (transcribe audio/vídeo),
+- **local** (compuesto: visión + OCR + transcripción, todo local).
 
 Decisión de diseño clave (ver ``docs/ARCHITECTURE.md`` §10 y §12): todo el
 análisis corre **en local**; nada de tus datos sale del dispositivo.
@@ -14,5 +17,11 @@ análisis corre **en local**; nada de tus datos sale del dispositivo.
 from prisma.analysis.base import Analyzer, get_analyzer, ANALYZERS
 from prisma.analysis.null import NullAnalyzer
 from prisma.analysis.ollama import OllamaAnalyzer
+from prisma.analysis.ocr import OcrAnalyzer
+from prisma.analysis.whisper import WhisperAnalyzer
+from prisma.analysis.local import LocalAnalyzer
 
-__all__ = ["Analyzer", "NullAnalyzer", "OllamaAnalyzer", "get_analyzer", "ANALYZERS"]
+__all__ = [
+    "Analyzer", "NullAnalyzer", "OllamaAnalyzer", "OcrAnalyzer",
+    "WhisperAnalyzer", "LocalAnalyzer", "get_analyzer", "ANALYZERS",
+]

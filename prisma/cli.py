@@ -277,7 +277,7 @@ def build_parser() -> argparse.ArgumentParser:
     pi.add_argument("--importer", default="jsonl", help="Nombre del importador.")
     pi.add_argument(
         "--analyzer", default="null",
-        help="Backend de análisis de medios: null (def.) | ollama (IA local).",
+        help="Análisis de medios: null (def.) | ollama (visión) | ocr | whisper | local (todo).",
     )
     pi.add_argument("--me", help="(WhatsApp) Tu nombre tal cual aparece, para marcarte como «yo».")
     pi.add_argument("--chat-name", dest="chat_name", help="(WhatsApp) Nombre del chat/grupo.")

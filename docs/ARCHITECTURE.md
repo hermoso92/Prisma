@@ -316,9 +316,13 @@ Prisma es deliberadamente **local-first, gratuito y privado**. Decisiones tomada
   embeddings) usa modelos locales gratuitos. **Nada de tus datos sale del equipo**
   y no hay APIs de pago. Backend de IA enchufable:
   - `null` (por defecto): no analiza; solo metadatos.
-  - `ollama`: describe imágenes con un modelo de visión local (p. ej. `llava`),
-    vía el servidor local de Ollama. Degrada con elegancia si Ollama no está.
-  - (futuro) Whisper para audio/vídeo y Tesseract para OCR, también locales.
+  - `ollama`: describe imágenes con un modelo de visión local (p. ej. `llava`).
+  - `ocr`: extrae texto de imágenes con Tesseract.
+  - `whisper`: transcribe audio/vídeo con Whisper.
+  - `local`: compuesto de los tres (visión + OCR + transcripción).
+
+  Todos degradan con elegancia: si la herramienta no está instalada, el medio se
+  ingiere igual (solo sin esa parte del análisis).
 - **macOS primero.** El código es multiplataforma (Python puro), pero el
   onboarding, las pistas de instalación (Homebrew) y las pruebas se pulen para Mac
   primero; Windows/Linux después, reutilizando casi todo.
