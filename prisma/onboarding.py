@@ -156,10 +156,13 @@ Opción B — Google Fotos vía Takeout (https://takeout.google.com):
     "notas": """📦 Notas
 
 - Apple Notes: selecciona notas → Archivo → «Exportar como PDF», o cópialas a una
-  carpeta de texto. (El sistema es cerrado; el export es manual.)
-- Google Keep: usa Takeout (https://takeout.google.com) → solo «Keep».
+  carpeta de texto (.txt/.md). Luego:
+     prisma ingest --importer notes RUTA/a/tus-notas
+- Google Keep: usa Takeout (https://takeout.google.com) → solo «Keep». Descomprime
+  y apunta a la carpeta Keep/ (Prisma lee los .json):
+     prisma ingest --importer keep RUTA/Takeout/Keep
 
-Luego ingiere los textos resultantes. (Importador dedicado: próximamente.)""",
+ℹ️  El importador de notas lee carpetas de .txt/.md; el de Keep lee el Takeout.""",
 }
 
 

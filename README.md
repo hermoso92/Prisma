@@ -201,6 +201,8 @@ prisma/
     claude.py          # importador del export de Claude
     whatsapp.py        # importador del _chat.txt de WhatsApp (iOS/Android)
     photos.py          # importador de fotos/vídeos (carpeta + sidecar Takeout)
+    notes.py           # importador de notas de texto/Markdown (Apple Notes export…)
+    keep.py            # importador de Google Keep (Takeout)
   analysis/
     base.py            # interfaz Analyzer (caption/OCR/transcripción) + registro
     null.py            # analizador por defecto (no analiza; solo metadatos)
@@ -216,7 +218,7 @@ prisma/
   mcp/
     server.py          # servidor MCP (JSON-RPC sobre stdio) que expone tu contexto
 examples/sample.jsonl  # datos de ejemplo multi-fuente
-tests/                 # tests (Fases 0–5 + Whisper/OCR): 88 casos
+tests/                 # tests: 96 casos
 docs/ARCHITECTURE.md   # diseño técnico completo
 ```
 

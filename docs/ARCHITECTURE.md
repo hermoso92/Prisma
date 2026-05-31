@@ -245,7 +245,7 @@ Rebanadas verticales: cada fase entrega algo usable de punta a punta.
 | **3** | Mensajería | Importador **WhatsApp** (export manual guiado) | ✅ |
 | **4** | Recuperación | **Embeddings** locales (Ollama) + búsqueda semántica por coseno | ✅ |
 | **5** | Asistente | **Servidor MCP** (stdio, sin dependencias) → conectado a Claude | ✅ |
-| **6+** | Más fuentes | Notas, Gmail, Calendar, Drive, Google Keep… | ⬜ |
+| **6+** | Más fuentes | **Notas** (texto/Markdown) y **Google Keep** (Takeout) ✅; Gmail, Calendar, Drive… ⬜ | 🟡 |
 
 **Por qué este orden:** ChatGPT/Claude primero = victoria rápida y motivadora
 (JSON estructurado). Fotos después = donde se ve la "magia" multimodal. WhatsApp

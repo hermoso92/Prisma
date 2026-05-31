@@ -14,6 +14,8 @@ from prisma.importers.chatgpt import ChatGptImporter
 from prisma.importers.claude import ClaudeImporter
 from prisma.importers.photos import PhotosImporter
 from prisma.importers.whatsapp import WhatsAppImporter
+from prisma.importers.notes import NotesImporter
+from prisma.importers.keep import KeepImporter
 
 #: Registro de importadores disponibles por nombre (usado por la CLI).
 REGISTRY: dict[str, type[Importer]] = {
@@ -22,9 +24,12 @@ REGISTRY: dict[str, type[Importer]] = {
     "claude": ClaudeImporter,
     "photos": PhotosImporter,
     "whatsapp": WhatsAppImporter,
+    "notes": NotesImporter,
+    "keep": KeepImporter,
 }
 
 __all__ = [
     "Importer", "JsonlImporter", "ChatGptImporter", "ClaudeImporter",
-    "PhotosImporter", "WhatsAppImporter", "REGISTRY",
+    "PhotosImporter", "WhatsAppImporter", "NotesImporter", "KeepImporter",
+    "REGISTRY",
 ]
