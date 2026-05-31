@@ -75,11 +75,13 @@ Ver el detalle fuente por fuente en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.m
 
 ## Estado actual
 
-✅ **Fases 0 y 1 completadas.** Esqueleto funcional (esquema común `Event`,
+✅ **Fases 0, 1 y 2 completadas.** Esqueleto funcional (esquema común `Event`,
 almacenamiento SQLite + object store *content-addressed*, ingesta idempotente,
-CLI) **e importadores reales de ChatGPT y Claude** (parsean el `conversations.json`
-de sus ZIP de export). Siguiente: Fase 2 (pipeline multimodal de fotos/vídeos).
-Ver el [roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
+CLI), **importadores de ChatGPT y Claude**, y **pipeline multimodal de
+fotos/vídeos** (importador de carpetas/Takeout con EXIF + GPS, binarios
+deduplicados, y análisis de contenido **enchufable** —caption/OCR/transcripción—
+con backend local por defecto). Siguiente: Fase 4 (embeddings + búsqueda
+semántica). Ver el [roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
 
 ## Probarlo (sin instalar nada)
 
@@ -103,6 +105,16 @@ python -m prisma.cli ingest --importer chatgpt ~/Descargas/chatgpt-export.zip
 python -m prisma.cli ingest --importer claude  ~/Descargas/claude-export.zip
 ```
 
+Fotos y vídeos (de una carpeta o un export de Google Takeout). Extrae fecha y GPS
+del *sidecar* de Takeout o del EXIF; el binario se guarda deduplicado:
+
+```bash
+python -m prisma.cli ingest --importer photos ~/Fotos
+# El análisis de imagen/audio (caption, OCR, transcripción) es enchufable:
+#   --analyzer null    (por defecto) no analiza; solo metadatos
+#   --analyzer <local|online>  (fases futuras) describe/transcribe el contenido
+```
+
 Reejecutar `ingest` sobre el mismo archivo no duplica nada (ingesta idempotente).
 
 Tests:
@@ -117,7 +129,7 @@ python -m unittest discover -s tests
 prisma/
   schema.py            # Event: el esquema común (corazón del sistema)
   config.py            # rutas: inbox (buzón) + data
-  ingest.py            # orquestador: importador → dedupe → persistencia
+  ingest.py            # orquestador: importador → análisis → dedupe → persistencia
   cli.py               # CLI: init / ingest / stats / search / timeline
   storage/
     metadata.py        # eventos / línea temporal (SQLite)
@@ -128,8 +140,13 @@ prisma/
     jsonl.py           # importador genérico (para probar el pipeline)
     chatgpt.py         # importador del export de ChatGPT
     claude.py          # importador del export de Claude
+    photos.py          # importador de fotos/vídeos (carpeta + sidecar Takeout)
+  analysis/
+    base.py            # interfaz Analyzer (caption/OCR/transcripción) + registro
+    null.py            # analizador por defecto (no analiza; solo metadatos)
+    exif.py            # parser EXIF mínimo sin dependencias (fecha + GPS)
 examples/sample.jsonl  # datos de ejemplo multi-fuente
-tests/                 # tests de la Fase 0
+tests/                 # tests (Fases 0, 1 y 2)
 docs/ARCHITECTURE.md   # diseño técnico completo
 ```
 

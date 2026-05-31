@@ -241,7 +241,7 @@ Rebanadas verticales: cada fase entrega algo usable de punta a punta.
 |------|----------|------------|--------|
 | **0** | Cimientos | Esquema común + almacenamiento + carpeta buzón + CLI de ingesta | ✅ |
 | **1** | Texto estructurado | Importadores de **ChatGPT** y **Claude** (ZIP → eventos) | ✅ |
-| **2** | Multimodal | Pipeline de **fotos/vídeos**: EXIF + visión + OCR + transcripción | ⬜ |
+| **2** | Multimodal | Pipeline de **fotos/vídeos**: EXIF/sidecar + análisis enchufable (caption/OCR/transcripción) | ✅ |
 | **3** | Mensajería | Importador **WhatsApp** (export manual guiado) | ⬜ |
 | **4** | Recuperación | **Embeddings** + búsqueda semántica + filtros temporales | ⬜ |
 | **5** | Asistente | **Servidor MCP** → conectado a Claude | ⬜ |

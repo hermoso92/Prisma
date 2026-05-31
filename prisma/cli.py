@@ -17,6 +17,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from prisma.analysis import get_analyzer
 from prisma.config import Config
 from prisma.importers import REGISTRY
 from prisma.ingest import Pipeline
@@ -54,8 +55,13 @@ def cmd_ingest(args: argparse.Namespace, cfg: Config) -> int:
     cfg.ensure_dirs()
     objects = ObjectStore(cfg.objects_dir)
     importer = importer_cls(source_path=path, objects=objects)
+    try:
+        analyzer = get_analyzer(args.analyzer)
+    except KeyError as exc:
+        print(exc, file=sys.stderr)
+        return 2
     with _store(cfg) as store:
-        result = Pipeline(store).ingest(importer)
+        result = Pipeline(store, objects=objects, analyzer=analyzer).ingest(importer)
     print(result)
     return 0
 
@@ -114,9 +120,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("init", help="Crea la estructura de carpetas.")
 
-    pi = sub.add_parser("ingest", help="Ingiere un archivo con un importador.")
+    pi = sub.add_parser("ingest", help="Ingiere un archivo/carpeta con un importador.")
     pi.add_argument("--importer", default="jsonl", help="Nombre del importador.")
-    pi.add_argument("path", help="Ruta al export/archivo a ingerir.")
+    pi.add_argument(
+        "--analyzer", default="null",
+        help="Backend de análisis de medios (por defecto: null, no analiza).",
+    )
+    pi.add_argument("path", help="Ruta al export/archivo/carpeta a ingerir.")
 
     sub.add_parser("stats", help="Conteo de eventos por fuente.")
 
