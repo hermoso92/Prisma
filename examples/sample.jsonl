@@ -1,0 +1,9 @@
+# Ejemplo de archivo JSONL para probar el pipeline:
+#   prisma ingest --importer jsonl examples/sample.jsonl
+# Cada línea es un evento en el esquema común. Mezcla varias "fuentes" para
+# ilustrar la línea temporal unificada.
+{"source": "chatgpt", "source_native_id": "conv-1-msg-1", "type": "message", "timestamp": "2026-02-03T10:15:00Z", "thread_id": "conv-1", "title": "Planificar viaje", "content": "Quiero organizar un viaje a Madrid en febrero.", "people": ["yo"]}
+{"source": "claude", "source_native_id": "proj-7-msg-3", "type": "message", "timestamp": "2026-02-10T18:40:00Z", "thread_id": "proj-7", "title": "Proyecto contrato", "content": "Resumen del borrador del contrato con cláusulas revisadas.", "people": ["yo"]}
+{"source": "whatsapp", "source_native_id": "chat-juan-2026-02-14-1", "type": "message", "timestamp": "2026-02-14T21:05:00Z", "thread_id": "chat-juan", "content": "Juan: ¿confirmamos lo del contrato el lunes?", "people": ["Juan", "yo"]}
+{"source": "photos", "source_native_id": "IMG_2026_0214_2102.jpg", "type": "photo", "timestamp": "2026-02-14T21:02:00Z", "content": "cena en restaurante, dos personas brindando", "people": ["Juan", "yo"], "location": {"lat": 40.4168, "lon": -3.7038, "place": "Madrid"}}
+{"source": "notes", "source_native_id": "note-mudanza", "type": "note", "timestamp": "2026-03-01T09:00:00Z", "title": "Mudanza", "content": "Pedir cajas, avisar a la empresa, reservar furgoneta para abril.", "people": ["yo"]}

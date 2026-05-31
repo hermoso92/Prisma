@@ -75,9 +75,53 @@ Ver el detalle fuente por fuente en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.m
 
 ## Estado actual
 
-🚧 **Fase de diseño.** Este repositorio contiene de momento el documento de
-arquitectura y el plan por fases. Ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-y el [roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
+✅ **Fase 0 (cimientos) completada.** Ya existe el esqueleto funcional: esquema
+común (`Event`), almacenamiento (metadatos en SQLite + object store
+*content-addressed*), orquestador de ingesta idempotente y una CLI. Siguiente:
+Fase 1 (importadores de ChatGPT y Claude). Ver el
+[roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
+
+## Probarlo (sin instalar nada)
+
+Solo usa la biblioteca estándar de Python (≥3.10):
+
+```bash
+export PYTHONPATH=$(pwd)
+export PRISMA_HOME=./prisma_data        # dónde se guardan tus datos (gitignored)
+
+python -m prisma.cli init                                   # crea inbox/ y data/
+python -m prisma.cli ingest --importer jsonl examples/sample.jsonl
+python -m prisma.cli stats                                  # eventos por fuente
+python -m prisma.cli search contrato                        # busca cruzando fuentes
+python -m prisma.cli timeline --since 2026-02-01T00:00:00Z  # línea temporal unificada
+```
+
+Reejecutar `ingest` sobre el mismo archivo no duplica nada (ingesta idempotente).
+
+Tests:
+
+```bash
+python -m unittest discover -s tests
+```
+
+## Estructura del proyecto
+
+```
+prisma/
+  schema.py            # Event: el esquema común (corazón del sistema)
+  config.py            # rutas: inbox (buzón) + data
+  ingest.py            # orquestador: importador → dedupe → persistencia
+  cli.py               # CLI: init / ingest / stats / search / timeline
+  storage/
+    metadata.py        # eventos / línea temporal (SQLite)
+    objects.py         # object store content-addressed (deduplica binarios)
+  importers/
+    base.py            # interfaz común de importadores
+    jsonl.py           # importador genérico (para probar el pipeline)
+examples/sample.jsonl  # datos de ejemplo multi-fuente
+tests/                 # tests de la Fase 0
+docs/ARCHITECTURE.md   # diseño técnico completo
+```
 
 ## Documentación
 
