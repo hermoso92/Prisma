@@ -3,10 +3,13 @@
     python -m unittest discover -s tests
 """
 
+import contextlib
+import io
 import tempfile
 import unittest
 from pathlib import Path
 
+import prisma.cli as cli
 from prisma.embeddings import HashingEmbedder, OllamaEmbedder, get_embedder
 from prisma.schema import Event
 from prisma.storage import MetadataStore
@@ -97,6 +100,30 @@ class TestVectorStore(unittest.TestCase):
         self.assertEqual(
             self.store.vector_search(other.embed("hola"), other.key, limit=5), []
         )
+
+
+class TestSearchSemanticErrorHandling(unittest.TestCase):
+    """Si el embedder falla (p. ej. Ollama caído), mensaje claro, no traceback."""
+
+    def test_friendly_error_when_embed_fails(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+
+        class Boom:
+            key = "x:y"
+            def embed(self, q):
+                raise OSError("connection refused")
+
+        orig = cli.get_embedder
+        cli.get_embedder = lambda name: Boom()
+        try:
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                rc = cli.main(["--home", tmp.name, "search", "hola", "--semantic"])
+        finally:
+            cli.get_embedder = orig
+        self.assertEqual(rc, 1)
+        self.assertIn("Ollama", err.getvalue())
 
 
 if __name__ == "__main__":

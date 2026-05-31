@@ -217,7 +217,14 @@ def cmd_search(args: argparse.Namespace, cfg: Config) -> int:
             except KeyError as exc:
                 print(exc, file=sys.stderr)
                 return 2
-            qvec = embedder.embed(args.query)
+            try:
+                qvec = embedder.embed(args.query)
+            except Exception as exc:  # p. ej. Ollama no disponible
+                print(f"No pude generar el embedding de la consulta: {exc}\n"
+                      f"   ↳ ¿Está Ollama en marcha? Prueba con "
+                      f"--embedder hashing para una búsqueda léxica offline.",
+                      file=sys.stderr)
+                return 1
             scored = store.vector_search(qvec, embedder.key, limit=args.limit)
             if not scored:
                 print("Sin resultados. ¿Has ejecutado `prisma index` primero?")
