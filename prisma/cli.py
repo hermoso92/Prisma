@@ -126,6 +126,18 @@ def cmd_connect(args: argparse.Namespace, cfg: Config) -> int:
     return 0
 
 
+def cmd_mcp(args: argparse.Namespace, cfg: Config) -> int:
+    """Arranca el servidor MCP (stdio) para conectar tu contexto a Claude."""
+    from prisma.mcp import McpServer
+    # Aviso por stderr (stdout queda reservado para el protocolo JSON-RPC).
+    print("🧠 Prisma MCP en marcha (stdio). Conéctalo desde tu cliente MCP.",
+          file=sys.stderr)
+    cfg.ensure_dirs()
+    with _store(cfg) as store:
+        McpServer(store, embedder_name=args.embedder).serve_stdio()
+    return 0
+
+
 def cmd_secret(args: argparse.Namespace, cfg: Config) -> int:
     store = get_secret_store(use_keychain=not args.no_keychain)
     where = "Llavero de macOS" if store.persistent else "memoria (efímero)"
@@ -290,6 +302,10 @@ def build_parser() -> argparse.ArgumentParser:
     pt.add_argument("--source")
     pt.add_argument("--limit", type=int, default=100)
 
+    pmcp = sub.add_parser("mcp", help="Arranca el servidor MCP para conectar a Claude.")
+    pmcp.add_argument("--embedder", default="ollama",
+                      help="Embedder para la búsqueda semántica del MCP.")
+
     psec = sub.add_parser("secret", help="Gestiona secretos en el Llavero (macOS).")
     psec.add_argument("action", choices=["set", "get", "rm"])
     psec.add_argument("name")
@@ -309,6 +325,7 @@ _DISPATCH = {
     "index": cmd_index,
     "search": cmd_search,
     "timeline": cmd_timeline,
+    "mcp": cmd_mcp,
     "secret": cmd_secret,
 }
 

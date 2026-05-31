@@ -157,6 +157,14 @@ class MetadataStore:
         for row in self._conn.execute(sql, params):
             yield self._row_to_event(row)
 
+    def thread(self, thread_id: str) -> list[Event]:
+        """Reconstruye una conversación: sus eventos por orden cronológico."""
+        rows = self._conn.execute(
+            "SELECT * FROM events WHERE thread_id = ? ORDER BY timestamp ASC",
+            (thread_id,),
+        ).fetchall()
+        return [self._row_to_event(r) for r in rows]
+
     def search(self, text: str, limit: int = 50) -> list[Event]:
         """Búsqueda ingenua por subcadena en ``content``/``title``.
 

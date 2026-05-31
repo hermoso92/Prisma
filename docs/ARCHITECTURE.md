@@ -244,7 +244,7 @@ Rebanadas verticales: cada fase entrega algo usable de punta a punta.
 | **2** | Multimodal | Pipeline de **fotos/vídeos**: EXIF/sidecar + análisis enchufable (caption/OCR/transcripción) | ✅ |
 | **3** | Mensajería | Importador **WhatsApp** (export manual guiado) | ✅ |
 | **4** | Recuperación | **Embeddings** locales (Ollama) + búsqueda semántica por coseno | ✅ |
-| **5** | Asistente | **Servidor MCP** → conectado a Claude | ⬜ |
+| **5** | Asistente | **Servidor MCP** (stdio, sin dependencias) → conectado a Claude | ✅ |
 | **6+** | Más fuentes | Notas, Gmail, Calendar, Drive, Google Keep… | ⬜ |
 
 **Por qué este orden:** ChatGPT/Claude primero = victoria rápida y motivadora

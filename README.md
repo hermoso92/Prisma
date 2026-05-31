@@ -81,13 +81,14 @@ Ver el detalle fuente por fuente en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.m
 
 ## Estado actual
 
-✅ **Fases 0–4 completadas.** Esqueleto funcional (esquema común `Event`,
-almacenamiento SQLite + object store *content-addressed*, ingesta idempotente),
-**importadores de ChatGPT, Claude, WhatsApp y fotos/vídeos**, **IA local con
-Ollama** (describe fotos, gratis y offline), **búsqueda semántica** (embeddings
-locales + coseno), **onboarding guiado** (`setup` / `doctor` / `connect`) y
-**gestión segura de secretos** (Llavero de macOS). Siguiente: Fase 5 (asistente
-vía MCP). Ver el [roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
+🎉 **Fases 0–5 completadas (roadmap base entero).** Esqueleto funcional (esquema
+común `Event`, almacenamiento SQLite + object store *content-addressed*, ingesta
+idempotente), **importadores de ChatGPT, Claude, WhatsApp y fotos/vídeos**, **IA
+local con Ollama** (describe fotos, gratis y offline), **búsqueda semántica**
+(embeddings locales + coseno), **servidor MCP** para conectar tu contexto a
+Claude, **onboarding guiado** (`setup` / `doctor` / `connect`) y **gestión segura
+de secretos** (Llavero de macOS). Ver el
+[roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
 
 ## Instalación (Mac)
 
@@ -116,6 +117,26 @@ prisma secret set openai              # guarda un token en el Llavero (nunca en 
 > Sin Ollama puedes probar la búsqueda semántica offline con el embedder léxico
 > de respaldo: `prisma index --embedder hashing` y
 > `prisma search "..." --semantic --embedder hashing`.
+
+## Preguntarle a tu vida desde Claude (MCP)
+
+Prisma expone tu base de conocimiento como un **servidor MCP**, para que Claude
+conteste con tu contexto real. Herramientas: `search_context`, `get_timeline`,
+`get_thread`, `summarize_period`, `stats`.
+
+Para conectarlo a **Claude Desktop**, añade a su configuración de MCP servers:
+
+```json
+{
+  "mcpServers": {
+    "prisma": { "command": "prisma", "args": ["mcp"] }
+  }
+}
+```
+
+Luego pregúntale en lenguaje natural: *"¿qué hablé con Juan sobre el contrato?"*,
+*"resúmeme febrero"*, *"enséñame lo del viaje"*. Todo se resuelve en local: el
+servidor solo lee tu base y devuelve texto; la inteligencia la pone Claude.
 
 ## Probarlo desde el repo (sin instalar)
 
@@ -187,8 +208,10 @@ prisma/
     base.py            # interfaz Embedder + registro
     ollama.py          # embeddings locales (nomic-embed-text) para búsqueda semántica
     hashing.py         # embedder léxico de respaldo, offline y sin dependencias
+  mcp/
+    server.py          # servidor MCP (JSON-RPC sobre stdio) que expone tu contexto
 examples/sample.jsonl  # datos de ejemplo multi-fuente
-tests/                 # tests (Fases 0–4): 65 casos
+tests/                 # tests (Fases 0–5): 79 casos
 docs/ARCHITECTURE.md   # diseño técnico completo
 ```
 
