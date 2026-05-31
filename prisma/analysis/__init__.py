@@ -4,15 +4,15 @@ El análisis pesado (describir una foto, OCR de una captura, transcribir un audi
 se aísla detrás de la interfaz :class:`Analyzer`, de modo que se pueda elegir el
 backend sin tocar el pipeline:
 
-- **local** (privado, sin que los datos salgan del dispositivo),
-- **online** (un modelo en la nube, más potente),
-- **null** (por defecto: no analiza; útil para ingerir rápido o sin dependencias).
+- **null** (por defecto: no analiza; útil para ingerir rápido o sin dependencias),
+- **ollama** (IA local y gratuita: describe imágenes con un modelo de visión).
 
-Decisión de diseño clave (ver ``docs/ARCHITECTURE.md`` §10 y §12): por defecto
-**no** se envía nada fuera. Activar un backend online es una decisión explícita.
+Decisión de diseño clave (ver ``docs/ARCHITECTURE.md`` §10 y §12): todo el
+análisis corre **en local**; nada de tus datos sale del dispositivo.
 """
 
 from prisma.analysis.base import Analyzer, get_analyzer, ANALYZERS
 from prisma.analysis.null import NullAnalyzer
+from prisma.analysis.ollama import OllamaAnalyzer
 
-__all__ = ["Analyzer", "NullAnalyzer", "get_analyzer", "ANALYZERS"]
+__all__ = ["Analyzer", "NullAnalyzer", "OllamaAnalyzer", "get_analyzer", "ANALYZERS"]

@@ -4,6 +4,10 @@
 > —chats de ChatGPT y Claude, WhatsApp, notas, fotos y vídeos— lo entiende, lo
 > indexa y te deja preguntarle cualquier cosa sobre tu propia vida.
 
+Es **100% local, gratuito y privado**: corre en tu Mac, sin servicios de pago y
+sin que tus datos salgan del equipo. Se instala con un comando (**pipx**) y un
+CLI **te lleva de la mano** para conectar cada app.
+
 Prisma ingiere, normaliza y analiza los datos de tus aplicaciones para construir
 una **base de conocimiento personal** unificada, y expone esa memoria a un LLM
 (Claude) a través de un servidor **MCP**. El resultado es un asistente que
@@ -61,31 +65,55 @@ Ver el detalle fuente por fuente en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.m
 
 ## Principios
 
-1. **Local-first.** Tus datos son tuyos. Por defecto todo se procesa y guarda en
-   local; lo que salga a la nube (p. ej. un modelo de visión) es decisión
-   explícita y configurable.
-2. **Esquema común antes que features.** El 80 % del valor está en normalizar
+1. **Local, gratis y offline.** Todo corre en tu Mac con software libre. La IA
+   (describir fotos, transcribir audios) usa modelos locales gratuitos (Ollama,
+   Whisper); nada de tus datos sale del equipo ni hay APIs de pago.
+2. **Te lleva de la mano.** Un CLI guiado (`setup`, `doctor`, `connect`) explica
+   en lenguaje claro cómo exportar de cada app, paso a paso.
+3. **Secretos seguros.** Tokens y datos sensibles nunca se escriben en texto plano:
+   se guardan en el **Llavero de macOS** (opt-in) o solo en memoria. Tú los apuntas.
+4. **Esquema común antes que features.** El 80 % del valor está en normalizar
    todo a una misma línea temporal para poder *cruzar* fuentes.
-3. **Rebanadas verticales.** Una fuente de punta a punta antes que diez a medias.
-4. **Solo vías oficiales.** Nada de scraping ni de saltarse términos de servicio.
-5. **Privacidad y consentimiento.** Cifrado en reposo, secretos en vault,
-   consentimiento por conector. Cumplimiento GDPR (datos de terceros en WhatsApp).
+5. **Solo vías oficiales.** Nada de scraping ni de saltarse términos de servicio.
+   Cumplimiento GDPR (datos de terceros en WhatsApp).
 
 ---
 
 ## Estado actual
 
-✅ **Fases 0, 1 y 2 completadas.** Esqueleto funcional (esquema común `Event`,
-almacenamiento SQLite + object store *content-addressed*, ingesta idempotente,
-CLI), **importadores de ChatGPT y Claude**, y **pipeline multimodal de
-fotos/vídeos** (importador de carpetas/Takeout con EXIF + GPS, binarios
-deduplicados, y análisis de contenido **enchufable** —caption/OCR/transcripción—
-con backend local por defecto). Siguiente: Fase 4 (embeddings + búsqueda
-semántica). Ver el [roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
+✅ **Fases 0–3 completadas.** Esqueleto funcional (esquema común `Event`,
+almacenamiento SQLite + object store *content-addressed*, ingesta idempotente),
+**importadores de ChatGPT, Claude, WhatsApp y fotos/vídeos**, **IA local con
+Ollama** (describe fotos, gratis y offline), **onboarding guiado** (`setup` /
+`doctor` / `connect`) y **gestión segura de secretos** (Llavero de macOS).
+Siguiente: Fase 4 (embeddings + búsqueda semántica). Ver el
+[roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
 
-## Probarlo (sin instalar nada)
+## Instalación (Mac)
 
-Solo usa la biblioteca estándar de Python (≥3.10):
+```bash
+brew install pipx && pipx ensurepath     # si no tienes pipx
+pipx install prisma-context              # instala el CLI `prisma`
+prisma setup                             # asistente: te deja todo a punto
+```
+
+`prisma doctor` te dice qué tienes y qué falta (todo opcional menos Python).
+Para la "magia" de describir fotos en local: `brew install ollama && ollama pull llava`.
+
+## Uso guiado
+
+```bash
+prisma connect whatsapp     # te explica cómo exportar (paso a paso, ameno)
+prisma connect chatgpt      # idem para cada fuente
+prisma ingest --importer whatsapp ~/_chat.txt --me "Tu Nombre"
+prisma ingest --importer photos ~/Pictures --analyzer ollama
+prisma search "contrato"    # busca cruzando todas tus fuentes
+prisma secret set openai    # guarda un token en el Llavero (nunca en disco)
+```
+
+## Probarlo desde el repo (sin instalar)
+
+Funciona solo con la biblioteca estándar de Python (≥3.10):
 
 ```bash
 export PYTHONPATH=$(pwd)
@@ -130,7 +158,9 @@ prisma/
   schema.py            # Event: el esquema común (corazón del sistema)
   config.py            # rutas: inbox (buzón) + data
   ingest.py            # orquestador: importador → análisis → dedupe → persistencia
-  cli.py               # CLI: init / ingest / stats / search / timeline
+  cli.py               # CLI: setup/doctor/connect/init/ingest/stats/search/timeline/secret
+  onboarding.py        # diagnóstico de entorno + guías amenas por fuente
+  secrets.py           # secretos seguros: Llavero de macOS (opt-in) o solo memoria
   storage/
     metadata.py        # eventos / línea temporal (SQLite)
     objects.py         # object store content-addressed (deduplica binarios)
@@ -140,13 +170,15 @@ prisma/
     jsonl.py           # importador genérico (para probar el pipeline)
     chatgpt.py         # importador del export de ChatGPT
     claude.py          # importador del export de Claude
+    whatsapp.py        # importador del _chat.txt de WhatsApp (iOS/Android)
     photos.py          # importador de fotos/vídeos (carpeta + sidecar Takeout)
   analysis/
     base.py            # interfaz Analyzer (caption/OCR/transcripción) + registro
     null.py            # analizador por defecto (no analiza; solo metadatos)
+    ollama.py          # IA local gratuita: describe imágenes con Ollama (llava)
     exif.py            # parser EXIF mínimo sin dependencias (fecha + GPS)
 examples/sample.jsonl  # datos de ejemplo multi-fuente
-tests/                 # tests (Fases 0, 1 y 2)
+tests/                 # tests (Fases 0–3): 57 casos
 docs/ARCHITECTURE.md   # diseño técnico completo
 ```
 

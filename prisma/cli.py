@@ -1,26 +1,35 @@
 """CLI de Prisma.
 
-Comandos de la Fase 0:
+Comandos:
 
+    prisma setup                         Asistente inicial: te lleva de la mano.
+    prisma doctor                        Comprueba el entorno (Python, Ollama, etc.).
+    prisma connect FUENTE                Te explica cómo exportar de cada app.
     prisma init                          Crea la estructura de carpetas (buzón + datos).
-    prisma ingest --importer jsonl FILE  Ingiere un archivo con un importador.
+    prisma ingest --importer X RUTA      Ingiere un archivo/carpeta con un importador.
     prisma stats                         Muestra el conteo de eventos por fuente.
     prisma search "texto"                Busca por subcadena (provisional, pre-embeddings).
     prisma timeline [--since ... --until ...]   Lista eventos por orden cronológico.
+    prisma secret set|get|rm NOMBRE      Guarda secretos en el Llavero (macOS).
 
 La raíz de datos se controla con ``--home`` o la variable ``PRISMA_HOME``.
+Todo corre en local: tus datos no salen de tu equipo.
 """
 
 from __future__ import annotations
 
 import argparse
+import getpass
 import sys
 from pathlib import Path
 
+from prisma import __version__
 from prisma.analysis import get_analyzer
 from prisma.config import Config
 from prisma.importers import REGISTRY
 from prisma.ingest import Pipeline
+from prisma.onboarding import check_environment, connect_guide, CONNECT_GUIDES
+from prisma.secrets import get_secret_store, keychain_available
 from prisma.storage import MetadataStore, ObjectStore
 
 
@@ -54,7 +63,16 @@ def cmd_ingest(args: argparse.Namespace, cfg: Config) -> int:
 
     cfg.ensure_dirs()
     objects = ObjectStore(cfg.objects_dir)
-    importer = importer_cls(source_path=path, objects=objects)
+
+    # Opciones específicas de algunos importadores (p. ej. WhatsApp).
+    extra = {}
+    if args.importer == "whatsapp":
+        if args.me:
+            extra["me"] = args.me
+        if args.chat_name:
+            extra["chat_name"] = args.chat_name
+    importer = importer_cls(source_path=path, objects=objects, **extra)
+
     try:
         analyzer = get_analyzer(args.analyzer)
     except KeyError as exc:
@@ -64,6 +82,71 @@ def cmd_ingest(args: argparse.Namespace, cfg: Config) -> int:
         result = Pipeline(store, objects=objects, analyzer=analyzer).ingest(importer)
     print(result)
     return 0
+
+
+def cmd_doctor(args: argparse.Namespace, cfg: Config) -> int:
+    print("🩺 Diagnóstico del entorno de Prisma\n")
+    statuses = check_environment()
+    for s in statuses:
+        print(f"  {s.mark}  {s.name} — {s.detail}")
+        if not s.ok:
+            print(f"        ↳ {s.why}")
+            print(f"        ↳ instalar: {s.install_hint}")
+    required_ok = all(s.ok for s in statuses if s.required)
+    print()
+    if required_ok:
+        print("✅ Lo esencial está listo. Lo demás es opcional (mejora la 'magia').")
+    else:
+        print("❌ Falta algo esencial; revisa lo marcado arriba.")
+    return 0 if required_ok else 1
+
+
+def cmd_setup(args: argparse.Namespace, cfg: Config) -> int:
+    print("👋 ¡Bienvenido a Prisma! Voy a dejarte todo a punto.\n")
+    cfg.ensure_dirs()
+    print(f"📂 Tu carpeta buzón es:  {cfg.inbox}")
+    print("   (deja ahí los exports que vayas descargando)\n")
+    cmd_doctor(args, cfg)
+    print("\n🔐 Secretos:", "Llavero de macOS disponible." if keychain_available()
+          else "se usarán solo en memoria (no se escriben a disco).")
+    print("\n👉 Siguiente paso: elige una fuente y te guío para exportarla:")
+    for src in CONNECT_GUIDES:
+        print(f"     prisma connect {src}")
+    return 0
+
+
+def cmd_connect(args: argparse.Namespace, cfg: Config) -> int:
+    guide = connect_guide(args.source)
+    if guide is None:
+        print(f"No tengo guía para {args.source!r}. "
+              f"Disponibles: {', '.join(CONNECT_GUIDES)}", file=sys.stderr)
+        return 2
+    print(guide)
+    return 0
+
+
+def cmd_secret(args: argparse.Namespace, cfg: Config) -> int:
+    store = get_secret_store(use_keychain=not args.no_keychain)
+    where = "Llavero de macOS" if store.persistent else "memoria (efímero)"
+    if args.action == "set":
+        value = getpass.getpass(f"Valor para «{args.name}» (no se mostrará): ")
+        store.set(args.name, value)
+        print(f"✅ Guardado en {where}.")
+        if not store.persistent:
+            print("ℹ️  Es efímero: apúntalo en tu libreta; no se guarda en disco.")
+        return 0
+    if args.action == "get":
+        val = store.get(args.name)
+        if val is None:
+            print(f"No hay secreto «{args.name}» en {where}.", file=sys.stderr)
+            return 1
+        print(val)
+        return 0
+    if args.action == "rm":
+        ok = store.delete(args.name)
+        print("✅ Borrado." if ok else "No existía.")
+        return 0
+    return 2
 
 
 def cmd_stats(args: argparse.Namespace, cfg: Config) -> int:
@@ -114,9 +197,16 @@ def cmd_timeline(args: argparse.Namespace, cfg: Config) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="prisma", description="Tu cerebro de contexto personal.")
+    p = argparse.ArgumentParser(prog="prisma", description="Tu cerebro de contexto personal (100% local).")
     p.add_argument("--home", help="Raíz de datos (o variable PRISMA_HOME).")
+    p.add_argument("--version", action="version", version=f"prisma {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("setup", help="Asistente inicial: te lleva de la mano.")
+    sub.add_parser("doctor", help="Comprueba el entorno (Python, Ollama, etc.).")
+
+    pc = sub.add_parser("connect", help="Te explica cómo exportar de cada app.")
+    pc.add_argument("source", help=f"Fuente: {', '.join(CONNECT_GUIDES)}")
 
     sub.add_parser("init", help="Crea la estructura de carpetas.")
 
@@ -124,8 +214,10 @@ def build_parser() -> argparse.ArgumentParser:
     pi.add_argument("--importer", default="jsonl", help="Nombre del importador.")
     pi.add_argument(
         "--analyzer", default="null",
-        help="Backend de análisis de medios (por defecto: null, no analiza).",
+        help="Backend de análisis de medios: null (def.) | ollama (IA local).",
     )
+    pi.add_argument("--me", help="(WhatsApp) Tu nombre tal cual aparece, para marcarte como «yo».")
+    pi.add_argument("--chat-name", dest="chat_name", help="(WhatsApp) Nombre del chat/grupo.")
     pi.add_argument("path", help="Ruta al export/archivo/carpeta a ingerir.")
 
     sub.add_parser("stats", help="Conteo de eventos por fuente.")
@@ -140,15 +232,25 @@ def build_parser() -> argparse.ArgumentParser:
     pt.add_argument("--source")
     pt.add_argument("--limit", type=int, default=100)
 
+    psec = sub.add_parser("secret", help="Gestiona secretos en el Llavero (macOS).")
+    psec.add_argument("action", choices=["set", "get", "rm"])
+    psec.add_argument("name")
+    psec.add_argument("--no-keychain", action="store_true",
+                      help="No usar el Llavero; mantener el secreto solo en memoria.")
+
     return p
 
 
 _DISPATCH = {
+    "setup": cmd_setup,
+    "doctor": cmd_doctor,
+    "connect": cmd_connect,
     "init": cmd_init,
     "ingest": cmd_ingest,
     "stats": cmd_stats,
     "search": cmd_search,
     "timeline": cmd_timeline,
+    "secret": cmd_secret,
 }
 
 

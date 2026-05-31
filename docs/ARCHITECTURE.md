@@ -242,7 +242,7 @@ Rebanadas verticales: cada fase entrega algo usable de punta a punta.
 | **0** | Cimientos | Esquema común + almacenamiento + carpeta buzón + CLI de ingesta | ✅ |
 | **1** | Texto estructurado | Importadores de **ChatGPT** y **Claude** (ZIP → eventos) | ✅ |
 | **2** | Multimodal | Pipeline de **fotos/vídeos**: EXIF/sidecar + análisis enchufable (caption/OCR/transcripción) | ✅ |
-| **3** | Mensajería | Importador **WhatsApp** (export manual guiado) | ⬜ |
+| **3** | Mensajería | Importador **WhatsApp** (export manual guiado) | ✅ |
 | **4** | Recuperación | **Embeddings** + búsqueda semántica + filtros temporales | ⬜ |
 | **5** | Asistente | **Servidor MCP** → conectado a Claude | ⬜ |
 | **6+** | Más fuentes | Notas, Gmail, Calendar, Drive, Google Keep… | ⬜ |
@@ -305,6 +305,36 @@ Propuesta inicial, todo sustituible. Prioridad: empezar simple y local.
 - **Detección de duplicados** entre fuentes (misma foto en Photos y WhatsApp):
   resuelto en parte por el object store content-addressed.
 - **Migraciones de esquema** a medida que evoluciona `schema_version`.
+
+---
+
+## 13. Decisiones de producto (local, gratis, autoinstalable)
+
+Prisma es deliberadamente **local-first, gratuito y privado**. Decisiones tomadas:
+
+- **100% local y offline.** Toda la IA (descripción de imágenes, transcripción,
+  embeddings) usa modelos locales gratuitos. **Nada de tus datos sale del equipo**
+  y no hay APIs de pago. Backend de IA enchufable:
+  - `null` (por defecto): no analiza; solo metadatos.
+  - `ollama`: describe imágenes con un modelo de visión local (p. ej. `llava`),
+    vía el servidor local de Ollama. Degrada con elegancia si Ollama no está.
+  - (futuro) Whisper para audio/vídeo y Tesseract para OCR, también locales.
+- **macOS primero.** El código es multiplataforma (Python puro), pero el
+  onboarding, las pistas de instalación (Homebrew) y las pruebas se pulen para Mac
+  primero; Windows/Linux después, reutilizando casi todo.
+- **Instalación con pipx.** `pipx install prisma-context` deja el CLI `prisma`
+  aislado y limpio. El propio CLI ayuda a instalar lo demás (Ollama, Whisper…).
+- **Onboarding guiado.** `prisma setup` (asistente), `prisma doctor` (diagnóstico
+  de entorno) y `prisma connect <fuente>` (guía amena, paso a paso, para exportar
+  de cada app, con la nota de seguridad sobre tokens).
+- **Secretos seguros (`prisma/secrets.py`).** Un token nunca se escribe en texto
+  plano en disco. Dos backends: **Llavero de macOS** (opt-in, cifrado por el
+  sistema) o **solo memoria** (efímero). El usuario apunta el secreto en su libreta;
+  Prisma solo pide el valor al sistema en el momento de la petición.
+- **VPS + dominio = distribución.** La infraestructura propia (p. ej. un VPS sin
+  GPU) se reserva para alojar el instalador, la web/documentación y los modelos a
+  descargar — **nunca para procesar datos personales**, que se quedan en el Mac
+  (donde además la GPU integrada acelera los modelos locales).
 
 ---
 
