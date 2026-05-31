@@ -25,6 +25,7 @@ from pathlib import Path
 
 from prisma import __version__
 from prisma.analysis import get_analyzer
+from prisma.embeddings import get_embedder
 from prisma.config import Config
 from prisma.importers import REGISTRY
 from prisma.ingest import Pipeline
@@ -163,8 +164,58 @@ def cmd_stats(args: argparse.Namespace, cfg: Config) -> int:
     return 0
 
 
+def cmd_index(args: argparse.Namespace, cfg: Config) -> int:
+    """Genera embeddings de los eventos que aún no los tienen (incremental)."""
+    try:
+        embedder = get_embedder(args.embedder)
+    except KeyError as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    space = embedder.key
+    done = failed = 0
+    with _store(cfg) as store:
+        pending = list(store.iter_unembedded(space))
+        if not pending:
+            print(f"Nada que indexar: todo al día en el espacio «{space}».")
+            return 0
+        print(f"Indexando {len(pending)} eventos con «{space}»…")
+        for ev in pending:
+            text = ev.content if not ev.title else f"{ev.title}\n{ev.content}"
+            try:
+                store.add_embedding(ev.id, space, embedder.embed(text))
+                done += 1
+            except Exception as exc:  # p. ej. Ollama no disponible
+                print(f"⚠️  {exc}", file=sys.stderr)
+                failed += 1
+                if failed == 1 and args.embedder == "ollama":
+                    print("   ↳ ¿Está Ollama en marcha? "
+                          "brew install ollama && ollama pull nomic-embed-text",
+                          file=sys.stderr)
+                    break
+        total = store.count_embeddings(space)
+    print(f"✅ {done} indexados ({total} en total).")
+    return 0 if failed == 0 else 1
+
+
 def cmd_search(args: argparse.Namespace, cfg: Config) -> int:
     with _store(cfg) as store:
+        if args.semantic:
+            try:
+                embedder = get_embedder(args.embedder)
+            except KeyError as exc:
+                print(exc, file=sys.stderr)
+                return 2
+            qvec = embedder.embed(args.query)
+            scored = store.vector_search(qvec, embedder.key, limit=args.limit)
+            if not scored:
+                print("Sin resultados. ¿Has ejecutado `prisma index` primero?")
+                return 0
+            for ev, score in scored:
+                snippet = (ev.content or ev.title or "").replace("\n", " ")
+                if len(snippet) > 90:
+                    snippet = snippet[:87] + "..."
+                print(f"  {score:.2f}  {ev.timestamp}  [{ev.source}/{ev.type}]  {snippet}")
+            return 0
         results = store.search(args.query, limit=args.limit)
     if not results:
         print("Sin resultados.")
@@ -222,8 +273,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("stats", help="Conteo de eventos por fuente.")
 
-    ps = sub.add_parser("search", help="Búsqueda por subcadena (provisional).")
+    pidx = sub.add_parser("index", help="Genera embeddings para la búsqueda semántica.")
+    pidx.add_argument("--embedder", default="ollama",
+                      help="Embedder: ollama (IA local, def.) | hashing (offline).")
+
+    ps = sub.add_parser("search", help="Busca por texto o por significado (--semantic).")
     ps.add_argument("query")
+    ps.add_argument("--semantic", action="store_true",
+                    help="Búsqueda por significado (requiere `prisma index` antes).")
+    ps.add_argument("--embedder", default="ollama", help="Embedder a usar con --semantic.")
     ps.add_argument("--limit", type=int, default=50)
 
     pt = sub.add_parser("timeline", help="Lista eventos por orden cronológico.")
@@ -248,6 +306,7 @@ _DISPATCH = {
     "init": cmd_init,
     "ingest": cmd_ingest,
     "stats": cmd_stats,
+    "index": cmd_index,
     "search": cmd_search,
     "timeline": cmd_timeline,
     "secret": cmd_secret,

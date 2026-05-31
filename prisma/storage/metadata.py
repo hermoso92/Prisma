@@ -11,7 +11,9 @@ Fase 0: SQLite. Sustituible por Postgres al escalar.
 
 from __future__ import annotations
 
+import array
 import json
+import math
 import sqlite3
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Optional
@@ -45,6 +47,16 @@ CREATE TABLE IF NOT EXISTS sources (
     cursor       TEXT,
     last_ingest  TEXT,
     event_count  INTEGER NOT NULL DEFAULT 0
+);
+
+-- Embeddings para búsqueda semántica. La clave incluye el "espacio" (modelo)
+-- para no mezclar vectores de embedders distintos. vec = float32 empaquetado.
+CREATE TABLE IF NOT EXISTS embeddings (
+    event_id   TEXT NOT NULL,
+    space      TEXT NOT NULL,
+    vec        BLOB NOT NULL,
+    PRIMARY KEY (event_id, space),
+    FOREIGN KEY (event_id) REFERENCES events(id)
 );
 """
 
@@ -176,6 +188,60 @@ class MetadataStore:
             (source, cursor, utcnow_iso(), source),
         )
         self._conn.commit()
+
+    # ------------------------------------------------------------- embeddings
+
+    def add_embedding(self, event_id: str, space: str, vector: list[float]) -> None:
+        """Guarda (o reemplaza) el embedding de un evento en un espacio dado."""
+        blob = array.array("f", vector).tobytes()
+        self._conn.execute(
+            "INSERT OR REPLACE INTO embeddings (event_id, space, vec) VALUES (?, ?, ?)",
+            (event_id, space, blob),
+        )
+        self._conn.commit()
+
+    def count_embeddings(self, space: str) -> int:
+        row = self._conn.execute(
+            "SELECT COUNT(*) AS n FROM embeddings WHERE space = ?", (space,)
+        ).fetchone()
+        return int(row["n"])
+
+    def iter_unembedded(self, space: str) -> Iterator[Event]:
+        """Eventos con texto que aún no tienen embedding en ``space``."""
+        rows = self._conn.execute(
+            "SELECT e.* FROM events e "
+            "LEFT JOIN embeddings em ON em.event_id = e.id AND em.space = ? "
+            "WHERE em.event_id IS NULL AND e.content <> '' "
+            "ORDER BY e.timestamp ASC",
+            (space,),
+        ).fetchall()
+        for row in rows:
+            yield self._row_to_event(row)
+
+    def vector_search(
+        self, query: list[float], space: str, limit: int = 20
+    ) -> list[tuple[Event, float]]:
+        """Búsqueda por similitud coseno. Devuelve ``[(evento, score), ...]``.
+
+        Fuerza bruta en Python puro: suficiente para una base personal. Para
+        escalar, se sustituiría por un índice vectorial (FAISS/Qdrant/pgvector).
+        """
+        qnorm = math.sqrt(sum(c * c for c in query)) or 1.0
+        rows = self._conn.execute(
+            "SELECT e.*, em.vec AS _vec FROM embeddings em "
+            "JOIN events e ON e.id = em.event_id WHERE em.space = ?",
+            (space,),
+        ).fetchall()
+        scored: list[tuple[Event, float]] = []
+        for row in rows:
+            vec = array.array("f")
+            vec.frombytes(row["_vec"])
+            dot = sum(q * v for q, v in zip(query, vec))
+            vnorm = math.sqrt(sum(v * v for v in vec)) or 1.0
+            d = {k: row[k] for k in row.keys() if k != "_vec"}
+            scored.append((self._row_to_event(d), dot / (qnorm * vnorm)))
+        scored.sort(key=lambda t: t[1], reverse=True)
+        return scored[:limit]
 
     # ------------------------------------------------------------ (de)serialize
 

@@ -81,13 +81,13 @@ Ver el detalle fuente por fuente en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.m
 
 ## Estado actual
 
-✅ **Fases 0–3 completadas.** Esqueleto funcional (esquema común `Event`,
+✅ **Fases 0–4 completadas.** Esqueleto funcional (esquema común `Event`,
 almacenamiento SQLite + object store *content-addressed*, ingesta idempotente),
 **importadores de ChatGPT, Claude, WhatsApp y fotos/vídeos**, **IA local con
-Ollama** (describe fotos, gratis y offline), **onboarding guiado** (`setup` /
-`doctor` / `connect`) y **gestión segura de secretos** (Llavero de macOS).
-Siguiente: Fase 4 (embeddings + búsqueda semántica). Ver el
-[roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
+Ollama** (describe fotos, gratis y offline), **búsqueda semántica** (embeddings
+locales + coseno), **onboarding guiado** (`setup` / `doctor` / `connect`) y
+**gestión segura de secretos** (Llavero de macOS). Siguiente: Fase 5 (asistente
+vía MCP). Ver el [roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
 
 ## Instalación (Mac)
 
@@ -107,9 +107,15 @@ prisma connect whatsapp     # te explica cómo exportar (paso a paso, ameno)
 prisma connect chatgpt      # idem para cada fuente
 prisma ingest --importer whatsapp ~/_chat.txt --me "Tu Nombre"
 prisma ingest --importer photos ~/Pictures --analyzer ollama
-prisma search "contrato"    # busca cruzando todas tus fuentes
-prisma secret set openai    # guarda un token en el Llavero (nunca en disco)
+prisma index                          # genera embeddings locales (Ollama)
+prisma search "lo del viaje" --semantic   # busca por significado, no por palabra
+prisma search "contrato"              # búsqueda literal (rápida, sin index)
+prisma secret set openai              # guarda un token en el Llavero (nunca en disco)
 ```
+
+> Sin Ollama puedes probar la búsqueda semántica offline con el embedder léxico
+> de respaldo: `prisma index --embedder hashing` y
+> `prisma search "..." --semantic --embedder hashing`.
 
 ## Probarlo desde el repo (sin instalar)
 
@@ -177,8 +183,12 @@ prisma/
     null.py            # analizador por defecto (no analiza; solo metadatos)
     ollama.py          # IA local gratuita: describe imágenes con Ollama (llava)
     exif.py            # parser EXIF mínimo sin dependencias (fecha + GPS)
+  embeddings/
+    base.py            # interfaz Embedder + registro
+    ollama.py          # embeddings locales (nomic-embed-text) para búsqueda semántica
+    hashing.py         # embedder léxico de respaldo, offline y sin dependencias
 examples/sample.jsonl  # datos de ejemplo multi-fuente
-tests/                 # tests (Fases 0–3): 57 casos
+tests/                 # tests (Fases 0–4): 65 casos
 docs/ARCHITECTURE.md   # diseño técnico completo
 ```
 
