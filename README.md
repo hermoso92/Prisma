@@ -224,5 +224,7 @@ docs/ARCHITECTURE.md   # diseño técnico completo
 
 ## Documentación
 
+- [`OVERVIEW.md`](OVERVIEW.md) — resumen técnico: en qué se basa, cómo se
+  construyó desde cero y cómo se verifica que funciona.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — diseño técnico completo,
   esquema común, pipeline, seguridad y roadmap.
