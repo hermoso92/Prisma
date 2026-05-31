@@ -10,10 +10,14 @@ WhatsApp, fotos...) llegan en las fases siguientes del roadmap.
 
 from prisma.importers.base import Importer
 from prisma.importers.jsonl import JsonlImporter
+from prisma.importers.chatgpt import ChatGptImporter
+from prisma.importers.claude import ClaudeImporter
 
 #: Registro de importadores disponibles por nombre (usado por la CLI).
 REGISTRY: dict[str, type[Importer]] = {
     "jsonl": JsonlImporter,
+    "chatgpt": ChatGptImporter,
+    "claude": ClaudeImporter,
 }
 
-__all__ = ["Importer", "JsonlImporter", "REGISTRY"]
+__all__ = ["Importer", "JsonlImporter", "ChatGptImporter", "ClaudeImporter", "REGISTRY"]

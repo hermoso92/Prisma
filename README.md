@@ -75,11 +75,11 @@ Ver el detalle fuente por fuente en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.m
 
 ## Estado actual
 
-✅ **Fase 0 (cimientos) completada.** Ya existe el esqueleto funcional: esquema
-común (`Event`), almacenamiento (metadatos en SQLite + object store
-*content-addressed*), orquestador de ingesta idempotente y una CLI. Siguiente:
-Fase 1 (importadores de ChatGPT y Claude). Ver el
-[roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
+✅ **Fases 0 y 1 completadas.** Esqueleto funcional (esquema común `Event`,
+almacenamiento SQLite + object store *content-addressed*, ingesta idempotente,
+CLI) **e importadores reales de ChatGPT y Claude** (parsean el `conversations.json`
+de sus ZIP de export). Siguiente: Fase 2 (pipeline multimodal de fotos/vídeos).
+Ver el [roadmap](docs/ARCHITECTURE.md#9-plan-por-fases-roadmap).
 
 ## Probarlo (sin instalar nada)
 
@@ -94,6 +94,13 @@ python -m prisma.cli ingest --importer jsonl examples/sample.jsonl
 python -m prisma.cli stats                                  # eventos por fuente
 python -m prisma.cli search contrato                        # busca cruzando fuentes
 python -m prisma.cli timeline --since 2026-02-01T00:00:00Z  # línea temporal unificada
+```
+
+Con tus exports reales (acepta el `.zip` tal cual, una carpeta, o el `.json`):
+
+```bash
+python -m prisma.cli ingest --importer chatgpt ~/Descargas/chatgpt-export.zip
+python -m prisma.cli ingest --importer claude  ~/Descargas/claude-export.zip
 ```
 
 Reejecutar `ingest` sobre el mismo archivo no duplica nada (ingesta idempotente).
@@ -117,7 +124,10 @@ prisma/
     objects.py         # object store content-addressed (deduplica binarios)
   importers/
     base.py            # interfaz común de importadores
+    util.py            # apertura de exports (zip/carpeta/json) + fechas
     jsonl.py           # importador genérico (para probar el pipeline)
+    chatgpt.py         # importador del export de ChatGPT
+    claude.py          # importador del export de Claude
 examples/sample.jsonl  # datos de ejemplo multi-fuente
 tests/                 # tests de la Fase 0
 docs/ARCHITECTURE.md   # diseño técnico completo
