@@ -134,6 +134,36 @@ class MetadataStore:
         ).fetchall()
         return {r["source"]: int(r["n"]) for r in rows}
 
+    def overview(self) -> dict[str, Any]:
+        """Vista de pájaro de todo el cerebro: fuentes, rango, análisis, vectores.
+
+        Pensado para `prisma status` — ver el bosque entero de un vistazo.
+        """
+        c = self._conn
+
+        def scalar(sql: str) -> int:
+            return int(c.execute(sql).fetchone()[0])
+
+        span = c.execute(
+            "SELECT MIN(timestamp), MAX(timestamp) FROM events"
+        ).fetchone()
+        return {
+            "total": self.count(),
+            "by_source": self.counts_by_source(),
+            "span": (span[0], span[1]),
+            "text_events": scalar("SELECT COUNT(*) FROM events WHERE content <> ''"),
+            "embedded": scalar("SELECT COUNT(DISTINCT event_id) FROM embeddings"),
+            "captions": scalar(
+                "SELECT COUNT(*) FROM events WHERE json_extract(derived,'$.caption') IS NOT NULL"),
+            "transcripts": scalar(
+                "SELECT COUNT(*) FROM events WHERE json_extract(derived,'$.transcript') IS NOT NULL"),
+            "ocr": scalar(
+                "SELECT COUNT(*) FROM events WHERE json_extract(derived,'$.ocr') IS NOT NULL"),
+            "photos": scalar("SELECT COUNT(*) FROM events WHERE type = 'photo'"),
+            "only_me": scalar(
+                "SELECT COUNT(*) FROM events WHERE json_extract(derived,'$.is_only_me') = 1"),
+        }
+
     def timeline(
         self,
         *,

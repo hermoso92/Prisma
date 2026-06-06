@@ -250,6 +250,33 @@ def cmd_search(args: argparse.Namespace, cfg: Config) -> int:
     return 0
 
 
+def cmd_status(args: argparse.Namespace, cfg: Config) -> int:
+    """Vista de pájaro de todo el cerebro de Prisma (ver el bosque entero)."""
+    with _store(cfg) as store:
+        ov = store.overview()
+    if ov["total"] == 0:
+        print("La base está vacía. Empieza con `prisma connect <fuente>` y `prisma ingest`.")
+        return 0
+    print("🌳 Estado de Prisma\n")
+    print(f"  Eventos totales: {ov['total']}")
+    if ov["span"][0]:
+        print(f"  Rango temporal:  {ov['span'][0][:10]} → {ov['span'][1][:10]}")
+    print("\n  Por fuente:")
+    width = max(len(s) for s in ov["by_source"])
+    for src, n in ov["by_source"].items():
+        print(f"    {src.ljust(width)}  {n}")
+    pct = (100 * ov["embedded"] // ov["text_events"]) if ov["text_events"] else 0
+    print("\n  Cerebro:")
+    print(f"    Embeddings (búsqueda semántica): {ov['embedded']}/{ov['text_events']} eventos ({pct}%)")
+    print(f"    Fotos: {ov['photos']}  ·  descritas: {ov['captions']}  ·  OCR: {ov['ocr']}")
+    print(f"    Transcripciones de audio/vídeo: {ov['transcripts']}")
+    if ov["only_me"]:
+        print(f"    Fotos 'solo yo': {ov['only_me']}")
+    if pct < 100 and ov["text_events"]:
+        print("\n  💡 Hay eventos sin indexar. Ejecuta `prisma index` para la búsqueda semántica.")
+    return 0
+
+
 def cmd_timeline(args: argparse.Namespace, cfg: Config) -> int:
     with _store(cfg) as store:
         events = list(
@@ -404,6 +431,7 @@ def build_parser() -> argparse.ArgumentParser:
     pi.add_argument("path", help="Ruta al export/archivo/carpeta a ingerir.")
 
     sub.add_parser("stats", help="Conteo de eventos por fuente.")
+    sub.add_parser("status", help="Vista de pájaro de todo el cerebro (el bosque entero).")
 
     pidx = sub.add_parser("index", help="Genera embeddings para la búsqueda semántica.")
     pidx.add_argument("--embedder", default="ollama",
@@ -459,6 +487,7 @@ _DISPATCH = {
     "init": cmd_init,
     "ingest": cmd_ingest,
     "stats": cmd_stats,
+    "status": cmd_status,
     "index": cmd_index,
     "search": cmd_search,
     "timeline": cmd_timeline,

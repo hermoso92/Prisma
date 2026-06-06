@@ -173,6 +173,7 @@ export PRISMA_HOME=./prisma_data        # dónde se guardan tus datos (gitignore
 
 python -m prisma.cli init                                   # crea inbox/ y data/
 python -m prisma.cli ingest --importer jsonl examples/sample.jsonl
+python -m prisma.cli status                                 # vista de pájaro del cerebro
 python -m prisma.cli stats                                  # eventos por fuente
 python -m prisma.cli search contrato                        # busca cruzando fuentes
 python -m prisma.cli timeline --since 2026-02-01T00:00:00Z  # línea temporal unificada

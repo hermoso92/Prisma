@@ -102,6 +102,31 @@ class TestVectorStore(unittest.TestCase):
         )
 
 
+class TestOverview(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.store = MetadataStore(Path(self.tmp.name) / "db.sqlite")
+
+    def tearDown(self):
+        self.store.close()
+        self.tmp.cleanup()
+
+    def test_overview_aggregates(self):
+        self.store.add_event(_ev("a", "2026-01-01T00:00:00Z", "hola", source="chatgpt"))
+        p = Event.create(source="photos", source_native_id="p", type="photo",
+                         timestamp="2026-03-01T00:00:00Z", content="una playa")
+        p.derived = {"caption": "una playa", "is_only_me": True}
+        self.store.add_event(p)
+        self.store.add_embedding("a:nope", "sp", [0.1])  # no cuenta como evento real distinto
+        ov = self.store.overview()
+        self.assertEqual(ov["total"], 2)
+        self.assertEqual(ov["photos"], 1)
+        self.assertEqual(ov["captions"], 1)
+        self.assertEqual(ov["only_me"], 1)
+        self.assertEqual(ov["span"], ("2026-01-01T00:00:00Z", "2026-03-01T00:00:00Z"))
+        self.assertEqual(ov["by_source"]["chatgpt"], 1)
+
+
 class TestSearchSemanticErrorHandling(unittest.TestCase):
     """Si el embedder falla (p. ej. Ollama caído), mensaje claro, no traceback."""
 
