@@ -165,6 +165,39 @@ class MetadataStore:
         ).fetchall()
         return [self._row_to_event(r) for r in rows]
 
+    def photos_where(
+        self,
+        *,
+        only_me: Optional[bool] = None,
+        max_people: Optional[int] = None,
+        no_animals: bool = False,
+        limit: Optional[int] = None,
+    ) -> list[Event]:
+        """Filtra fotos por atributos estructurados de ``derived`` (vía json_extract).
+
+        - ``only_me``: exige ``derived.is_only_me``.
+        - ``max_people``: nº de personas ≤ este valor.
+        - ``no_animals``: sin animales detectados (lista ``animals`` vacía).
+        """
+        clauses = ["type = 'photo'"]
+        params: list[Any] = []
+        if only_me is not None:
+            clauses.append("json_extract(derived, '$.is_only_me') = ?")
+            params.append(1 if only_me else 0)
+        if max_people is not None:
+            clauses.append("json_extract(derived, '$.people_count') <= ?")
+            params.append(max_people)
+        if no_animals:
+            # animals ausente o lista vacía cuenta como "sin animales".
+            clauses.append(
+                "(json_extract(derived, '$.animals') IS NULL "
+                "OR json_array_length(json_extract(derived, '$.animals')) = 0)"
+            )
+        sql = f"SELECT * FROM events WHERE {' AND '.join(clauses)} ORDER BY timestamp ASC"
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        return [self._row_to_event(r) for r in self._conn.execute(sql, params)]
+
     def search(self, text: str, limit: int = 50) -> list[Event]:
         """Búsqueda ingenua por subcadena en ``content``/``title``.
 

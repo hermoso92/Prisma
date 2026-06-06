@@ -59,8 +59,8 @@ class TestProtocol(_Base):
     def test_tools_list(self):
         resp = self.srv.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         names = {t["name"] for t in resp["result"]["tools"]}
-        self.assertEqual(names, {"search_context", "get_timeline", "get_thread",
-                                 "summarize_period", "stats"})
+        self.assertTrue({"search_context", "get_timeline", "get_thread",
+                         "summarize_period", "stats"}.issubset(names))
         for t in resp["result"]["tools"]:
             self.assertIn("inputSchema", t)  # cada tool declara su esquema
 

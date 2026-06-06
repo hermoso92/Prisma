@@ -79,6 +79,7 @@ def cmd_ingest(args: argparse.Namespace, cfg: Config) -> int:
     except KeyError as exc:
         print(exc, file=sys.stderr)
         return 2
+    analyzer.configure(cfg)  # p. ej. el reconocimiento facial necesita cfg.faces_dir
     with _store(cfg) as store:
         result = Pipeline(store, objects=objects, analyzer=analyzer).ingest(importer)
     print(result)
@@ -133,8 +134,10 @@ def cmd_mcp(args: argparse.Namespace, cfg: Config) -> int:
     print("🧠 Prisma MCP en marcha (stdio). Conéctalo desde tu cliente MCP.",
           file=sys.stderr)
     cfg.ensure_dirs()
+    objects = ObjectStore(cfg.objects_dir)
     with _store(cfg) as store:
-        McpServer(store, embedder_name=args.embedder).serve_stdio()
+        McpServer(store, embedder_name=args.embedder,
+                  objects=objects, render_dir=cfg.render_dir).serve_stdio()
     return 0
 
 
@@ -266,6 +269,116 @@ def cmd_timeline(args: argparse.Namespace, cfg: Config) -> int:
     return 0
 
 
+def cmd_enroll(args: argparse.Namespace, cfg: Config) -> int:
+    """Enrola una cara (p. ej. la tuya, 'me') desde fotos de referencia."""
+    from prisma.analysis.faces import FaceRecognitionMatcher, FaceStore
+    cfg.ensure_dirs()
+    paths = []
+    for raw in args.images:
+        p = Path(raw)
+        if p.is_dir():
+            paths += [q for q in sorted(p.rglob("*"))
+                      if q.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".heic")]
+        elif p.is_file():
+            paths.append(p)
+    if not paths:
+        print("No encontré imágenes de referencia.", file=sys.stderr)
+        return 2
+    matcher = FaceRecognitionMatcher(FaceStore(cfg.faces_dir))
+    added = matcher.enroll(args.name, paths)
+    if added == 0:
+        print("No pude enrolar ninguna cara. ¿Está instalado face_recognition y "
+              "se ven caras claras en las fotos?", file=sys.stderr)
+        return 1
+    print(f"✅ Enrolé «{args.name}» con {added} cara(s) de {len(paths)} foto(s).")
+    return 0
+
+
+def _photo_filter_events(store, args):
+    return store.photos_where(
+        only_me=True if args.only_me else None,
+        max_people=args.max_people,
+        no_animals=args.no_animals,
+        limit=args.limit,
+    )
+
+
+def cmd_photos(args: argparse.Namespace, cfg: Config) -> int:
+    """Lista fotos por atributos (p. ej. --only-me --no-animals)."""
+    with _store(cfg) as store:
+        events = _photo_filter_events(store, args)
+    if not events:
+        print("Sin fotos que cumplan el filtro. ¿Ingeriste con --analyzer attrs/local?")
+        return 0
+    for ev in events:
+        d = ev.derived
+        tag = []
+        if "people_count" in d:
+            tag.append(f"{d['people_count']}p")
+        if d.get("animals"):
+            tag.append("animales:" + ",".join(d["animals"]))
+        if d.get("is_only_me"):
+            tag.append("solo-yo")
+        meta = ev.source_meta.get("filename", "")
+        print(f"  {ev.timestamp}  {meta}  [{' '.join(tag)}]")
+    return 0
+
+
+def _gather_images(store, objects, events) -> list[bytes]:
+    blobs = []
+    for ev in events:
+        if ev.media:
+            try:
+                blobs.append(objects.get(ev.media[0]["ref"]))
+            except (KeyError, OSError):
+                pass
+    return blobs
+
+
+def cmd_collage(args: argparse.Namespace, cfg: Config) -> int:
+    from prisma.render import make_collage, RenderError
+    cfg.ensure_dirs()
+    objects = ObjectStore(cfg.objects_dir)
+    with _store(cfg) as store:
+        events = _photo_filter_events(store, args)
+        images = _gather_images(store, objects, events)
+    out = Path(args.out) if args.out else cfg.render_dir / "collage.jpg"
+    try:
+        path = make_collage(images, out, cols=args.cols)
+    except RenderError as exc:
+        print(f"{exc}", file=sys.stderr)
+        return 1
+    print(f"✅ Collage con {len(images)} fotos → {path}")
+    return 0
+
+
+def cmd_video(args: argparse.Namespace, cfg: Config) -> int:
+    from prisma.render import make_video, RenderError
+    cfg.ensure_dirs()
+    objects = ObjectStore(cfg.objects_dir)
+    with _store(cfg) as store:
+        events = _photo_filter_events(store, args)
+        images = _gather_images(store, objects, events)
+    out = Path(args.out) if args.out else cfg.render_dir / "video.mp4"
+    try:
+        path = make_video(images, out, seconds_per_image=args.secs)
+    except RenderError as exc:
+        print(f"{exc}", file=sys.stderr)
+        return 1
+    print(f"✅ Vídeo con {len(images)} fotos → {path}")
+    return 0
+
+
+def _add_photo_filters(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--only-me", dest="only_me", action="store_true",
+                        help="Solo fotos donde apareces tú solo (requiere enroll).")
+    parser.add_argument("--max-people", dest="max_people", type=int,
+                        help="Máximo de personas en la foto.")
+    parser.add_argument("--no-animals", dest="no_animals", action="store_true",
+                        help="Sin animales detectados.")
+    parser.add_argument("--limit", type=int, default=500)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="prisma", description="Tu cerebro de contexto personal (100% local).")
     p.add_argument("--home", help="Raíz de datos (o variable PRISMA_HOME).")
@@ -284,7 +397,7 @@ def build_parser() -> argparse.ArgumentParser:
     pi.add_argument("--importer", default="jsonl", help="Nombre del importador.")
     pi.add_argument(
         "--analyzer", default="null",
-        help="Análisis de medios: null (def.) | ollama (visión) | ocr | whisper | local (todo).",
+        help="Análisis de medios: null (def.) | ollama | ocr | whisper | detect | attrs | local.",
     )
     pi.add_argument("--me", help="(WhatsApp) Tu nombre tal cual aparece, para marcarte como «yo».")
     pi.add_argument("--chat-name", dest="chat_name", help="(WhatsApp) Nombre del chat/grupo.")
@@ -319,6 +432,23 @@ def build_parser() -> argparse.ArgumentParser:
     psec.add_argument("--no-keychain", action="store_true",
                       help="No usar el Llavero; mantener el secreto solo en memoria.")
 
+    pen = sub.add_parser("enroll", help="Enrola una cara (p. ej. la tuya) desde fotos.")
+    pen.add_argument("name", help="Etiqueta de identidad (usa 'me' para ti).")
+    pen.add_argument("images", nargs="+", help="Fotos o carpeta de referencia.")
+
+    pph = sub.add_parser("photos", help="Lista fotos por atributos (--only-me, etc.).")
+    _add_photo_filters(pph)
+
+    pcol = sub.add_parser("collage", help="Crea un collage con las fotos del filtro.")
+    _add_photo_filters(pcol)
+    pcol.add_argument("--out", help="Fichero de salida (por defecto en render/).")
+    pcol.add_argument("--cols", type=int, help="Nº de columnas del collage.")
+
+    pvid = sub.add_parser("video", help="Crea un vídeo/slideshow con las fotos del filtro.")
+    _add_photo_filters(pvid)
+    pvid.add_argument("--out", help="Fichero de salida (por defecto en render/).")
+    pvid.add_argument("--secs", type=float, default=2.0, help="Segundos por foto.")
+
     return p
 
 
@@ -334,6 +464,10 @@ _DISPATCH = {
     "timeline": cmd_timeline,
     "mcp": cmd_mcp,
     "secret": cmd_secret,
+    "enroll": cmd_enroll,
+    "photos": cmd_photos,
+    "collage": cmd_collage,
+    "video": cmd_video,
 }
 
 

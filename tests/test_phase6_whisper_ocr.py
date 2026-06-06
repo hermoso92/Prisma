@@ -80,7 +80,10 @@ class TestLocalComposite(unittest.TestCase):
             def ocr(self, **kw): return "cartel: bar"
         class W:
             def transcribe(self, **kw): return "audio del vídeo"
-        a = LocalAnalyzer(vision=V(), ocr=O(), transcriber=W())
+        class NoAttrs:  # evita invocar YOLO real en el test
+            def detect(self, **kw): return {}
+            def identify(self, **kw): return None
+        a = LocalAnalyzer(vision=V(), ocr=O(), transcriber=W(), attrs=NoAttrs())
         # Foto: caption + ocr, sin transcript.
         d = a.analyze(data=b"x", mime="image/jpeg", type="photo")
         self.assertEqual(d["caption"], "una playa")

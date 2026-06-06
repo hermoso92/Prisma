@@ -87,21 +87,70 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Resumen de qué hay en la base: conteo de eventos por fuente.",
         "inputSchema": {"type": "object", "properties": {}},
     },
+    {
+        "name": "find_photos",
+        "description": (
+            "Busca fotos por atributos: solo el usuario, nº de personas, sin "
+            "animales. Requiere haber ingerido fotos con análisis de atributos."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "only_me": {"type": "boolean", "description": "Solo donde aparece el usuario solo."},
+                "max_people": {"type": "integer"},
+                "no_animals": {"type": "boolean"},
+                "limit": {"type": "integer", "default": 100},
+            },
+        },
+    },
+    {
+        "name": "make_collage",
+        "description": "Crea un collage con las fotos que cumplen el filtro (mismos campos que find_photos).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "only_me": {"type": "boolean"},
+                "max_people": {"type": "integer"},
+                "no_animals": {"type": "boolean"},
+                "name": {"type": "string", "description": "Nombre del fichero de salida."},
+            },
+        },
+    },
+    {
+        "name": "make_video",
+        "description": "Crea un vídeo/slideshow con las fotos del filtro (mismos campos que find_photos).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "only_me": {"type": "boolean"},
+                "max_people": {"type": "integer"},
+                "no_animals": {"type": "boolean"},
+                "seconds_per_image": {"type": "number", "default": 2.0},
+                "name": {"type": "string"},
+            },
+        },
+    },
 ]
 
 
 class McpServer:
     """Maneja mensajes MCP contra un :class:`MetadataStore`."""
 
-    def __init__(self, store: MetadataStore, embedder_name: str = "ollama") -> None:
+    def __init__(self, store: MetadataStore, embedder_name: str = "ollama",
+                 objects=None, render_dir=None) -> None:
         self.store = store
         self.embedder_name = embedder_name
+        self.objects = objects
+        self.render_dir = render_dir
         self._handlers: dict[str, Callable[[dict], dict]] = {
             "search_context": self._t_search,
             "get_timeline": self._t_timeline,
             "get_thread": self._t_thread,
             "summarize_period": self._t_summarize,
             "stats": self._t_stats,
+            "find_photos": self._t_find_photos,
+            "make_collage": self._t_make_collage,
+            "make_video": self._t_make_video,
         }
 
     # ----------------------------------------------------------- JSON-RPC core
@@ -206,6 +255,64 @@ class McpServer:
         lines = [f"{src}: {n}" for src, n in counts.items()]
         lines.append(f"TOTAL: {self.store.count()}")
         return self._text("\n".join(lines))
+
+    # --- fotos por atributos + render -------------------------------------
+
+    def _photos(self, args: dict) -> list[Event]:
+        return self.store.photos_where(
+            only_me=True if args.get("only_me") else None,
+            max_people=args.get("max_people"),
+            no_animals=bool(args.get("no_animals")),
+            limit=int(args.get("limit", 100)),
+        )
+
+    def _t_find_photos(self, args: dict) -> dict:
+        events = self._photos(args)
+        if not events:
+            return self._text("Ninguna foto cumple el filtro. ¿Ingeriste con "
+                              "--analyzer attrs/local y enrolaste tu cara?")
+        return self._text("\n".join(
+            f"{ev.timestamp} {ev.source_meta.get('filename', ev.id[:8])} "
+            f"[{ev.derived.get('people_count', '?')}p"
+            f"{' solo-yo' if ev.derived.get('is_only_me') else ''}]"
+            for ev in events
+        ))
+
+    def _gather(self, events) -> list[bytes]:
+        blobs = []
+        if self.objects is None:
+            return blobs
+        for ev in events:
+            if ev.media:
+                try:
+                    blobs.append(self.objects.get(ev.media[0]["ref"]))
+                except (KeyError, OSError):
+                    pass
+        return blobs
+
+    def _t_make_collage(self, args: dict) -> dict:
+        from prisma.render import make_collage, RenderError
+        if self.objects is None or self.render_dir is None:
+            return self._text("Render no disponible en este servidor.", is_error=True)
+        images = self._gather(self._photos(args))
+        out = self.render_dir / (args.get("name") or "collage.jpg")
+        try:
+            path = make_collage(images, out)
+        except RenderError as exc:
+            return self._text(str(exc), is_error=True)
+        return self._text(f"Collage con {len(images)} fotos creado en {path}")
+
+    def _t_make_video(self, args: dict) -> dict:
+        from prisma.render import make_video, RenderError
+        if self.objects is None or self.render_dir is None:
+            return self._text("Render no disponible en este servidor.", is_error=True)
+        images = self._gather(self._photos(args))
+        out = self.render_dir / (args.get("name") or "video.mp4")
+        try:
+            path = make_video(images, out, seconds_per_image=float(args.get("seconds_per_image", 2.0)))
+        except RenderError as exc:
+            return self._text(str(exc), is_error=True)
+        return self._text(f"Vídeo con {len(images)} fotos creado en {path}")
 
     # ------------------------------------------------------------------ format
 

@@ -37,6 +37,16 @@ class Config:
     def objects_dir(self) -> Path:
         return self.data / "objects"
 
+    @property
+    def faces_dir(self) -> Path:
+        """Donde se guarda la cara enrolada para el reconocimiento facial."""
+        return self.data / "faces"
+
+    @property
+    def render_dir(self) -> Path:
+        """Salida de collages y vídeos generados."""
+        return self.home / "render"
+
     def ensure_dirs(self) -> None:
         for d in (self.home, self.inbox, self.data, self.objects_dir):
             d.mkdir(parents=True, exist_ok=True)

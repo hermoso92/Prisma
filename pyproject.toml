@@ -16,6 +16,11 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]
+# Extras locales y gratuitos para la "magia" (todos opcionales; el CLI degrada
+# con elegancia si faltan). Instálalos en tu Mac según lo que quieras usar.
+vision = ["ultralytics"]            # detección de personas/animales (YOLO)
+faces = ["face_recognition"]        # reconocimiento facial ("solo yo")
+render = ["pillow"]                 # collage (el vídeo usa el binario ffmpeg)
 
 [project.scripts]
 prisma = "prisma.cli:main"

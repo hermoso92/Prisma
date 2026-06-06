@@ -120,6 +120,29 @@ prisma secret set openai              # guarda un token en el Llavero (nunca en 
 > de respaldo: `prisma index --embedder hashing` y
 > `prisma search "..." --semantic --embedder hashing`.
 
+## Fotos por atributos: "solo yo, sin gatos" → collage/vídeo
+
+Prisma puede entender *qué* hay en cada foto (personas, animales) y *quién* eres
+tú, y filtrar por ello — luego generar un collage o un vídeo. Todo local:
+
+```bash
+# 1) enrola tu cara con unas fotos de referencia (una sola vez)
+prisma enroll me ~/Fotos/referencias-mias
+# 2) ingiere tu colección con análisis de atributos (YOLO + caras)
+prisma ingest --importer photos ~/Fotos/coleccion --analyzer attrs
+# 3) filtra: solo donde sales tú solo, sin animales ni otras personas
+prisma photos --only-me
+# 4) crea un collage o un vídeo con ese conjunto
+prisma collage --only-me --out solo-yo.jpg
+prisma video --only-me --secs 2 --out solo-yo.mp4
+```
+
+Requiere (opcionales, locales y gratis): `pipx install ultralytics`
+(detección), `pipx install face_recognition` (caras), `pip install pillow`
+(collage), `brew install ffmpeg` (vídeo). Si falta alguno, Prisma ingiere igual y
+te dice qué instalar. Desde Claude, vía MCP: `find_photos`, `make_collage`,
+`make_video`.
+
 ## Preguntarle a tu vida desde Claude (MCP)
 
 Prisma expone tu base de conocimiento como un **servidor MCP**, para que Claude
