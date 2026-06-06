@@ -355,8 +355,10 @@ sistema. Plan en pasadas para no perder el bosque por un árbol:
 3. **Completar FUENTES (APIs vivas)** 🟡 — Google Photos ✅ (importador `gphotos`
    vía la Library API + OAuth con el gestor de secretos, paginación y descarga al
    object store); pendiente: Gmail, Calendar, Drive. Cierra la flecha "—API—".
-4. **Validar con datos reales** ⬜ — prueba de punta a punta en el Mac del usuario
-   con exports reales y modelos locales; ajustar umbrales; conectar MCP a Claude.
+4. **Validar con datos reales** 🟡 — `prisma verify` ✅ (autodiagnóstico no
+   destructivo del pipeline completo + capacidades opcionales del equipo);
+   pendiente: que el usuario lo ejecute en su Mac con exports y modelos reales,
+   ajuste umbrales y conecte el MCP a Claude.
 
 ---
 

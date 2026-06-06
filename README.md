@@ -101,7 +101,9 @@ prisma setup                             # asistente: te deja todo a punto
 ```
 
 `prisma doctor` te dice qué tienes y qué falta (todo opcional menos Python).
-Para la "magia" de describir fotos en local: `brew install ollama && ollama pull llava`.
+`prisma verify` prueba el pipeline entero de punta a punta (no destructivo) y
+lista qué capacidades opcionales tienes. Para la "magia" de describir fotos en
+local: `brew install ollama && ollama pull llava`.
 
 ## Uso guiado
 

@@ -104,6 +104,11 @@ def cmd_ingest(args: argparse.Namespace, cfg: Config) -> int:
     return 0
 
 
+def cmd_verify(args: argparse.Namespace, cfg: Config) -> int:
+    from prisma.verify import run_verify
+    return 0 if run_verify() else 1
+
+
 def cmd_doctor(args: argparse.Namespace, cfg: Config) -> int:
     print("🩺 Diagnóstico del entorno de Prisma\n")
     statuses = check_environment()
@@ -477,6 +482,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("setup", help="Asistente inicial: te lleva de la mano.")
     sub.add_parser("doctor", help="Comprueba el entorno (Python, Ollama, etc.).")
+    sub.add_parser("verify", help="Autodiagnóstico: prueba el pipeline de punta a punta.")
 
     pc = sub.add_parser("connect", help="Te explica cómo exportar de cada app.")
     pc.add_argument("source", help=f"Fuente: {', '.join(CONNECT_GUIDES)}")
@@ -557,6 +563,7 @@ def build_parser() -> argparse.ArgumentParser:
 _DISPATCH = {
     "setup": cmd_setup,
     "doctor": cmd_doctor,
+    "verify": cmd_verify,
     "connect": cmd_connect,
     "init": cmd_init,
     "ingest": cmd_ingest,
