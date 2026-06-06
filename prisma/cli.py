@@ -135,9 +135,10 @@ def cmd_mcp(args: argparse.Namespace, cfg: Config) -> int:
           file=sys.stderr)
     cfg.ensure_dirs()
     objects = ObjectStore(cfg.objects_dir)
+    idmap = _identity_map(cfg)
     with _store(cfg) as store:
-        McpServer(store, embedder_name=args.embedder,
-                  objects=objects, render_dir=cfg.render_dir).serve_stdio()
+        McpServer(store, embedder_name=args.embedder, objects=objects,
+                  render_dir=cfg.render_dir, resolve=idmap.resolve).serve_stdio()
     return 0
 
 
@@ -274,6 +275,50 @@ def cmd_status(args: argparse.Namespace, cfg: Config) -> int:
         print(f"    Fotos 'solo yo': {ov['only_me']}")
     if pct < 100 and ov["text_events"]:
         print("\n  💡 Hay eventos sin indexar. Ejecuta `prisma index` para la búsqueda semántica.")
+    return 0
+
+
+def _identity_map(cfg: Config):
+    from prisma.identity import IdentityMap
+    return IdentityMap(cfg.data / "identities.json")
+
+
+def cmd_people(args: argparse.Namespace, cfg: Config) -> int:
+    """Lista las personas que aparecen en tu contexto, unificando alias."""
+    idmap = _identity_map(cfg)
+    with _store(cfg) as store:
+        counts = store.people_counts(resolve=idmap.resolve)
+    if not counts:
+        print("Aún no hay personas en la base.")
+        return 0
+    width = max(len(p) for p in counts)
+    for person, n in counts.items():
+        print(f"  {person.ljust(width)}  {n}")
+    return 0
+
+
+def cmd_alias(args: argparse.Namespace, cfg: Config) -> int:
+    """Une varios alias bajo una identidad canónica (mismo 'Juan' entre fuentes)."""
+    cfg.ensure_dirs()
+    idmap = _identity_map(cfg)
+    idmap.add(args.canonical, *args.aliases)
+    print(f"✅ «{args.canonical}» ahora agrupa: {', '.join(args.aliases)}")
+    return 0
+
+
+def cmd_person(args: argparse.Namespace, cfg: Config) -> int:
+    """Muestra los eventos donde aparece una persona (cruzando fuentes)."""
+    idmap = _identity_map(cfg)
+    with _store(cfg) as store:
+        events = store.events_by_person(args.name, resolve=idmap.resolve, limit=args.limit)
+    if not events:
+        print(f"Sin eventos de «{args.name}».")
+        return 0
+    for ev in events:
+        snippet = (ev.content or ev.title or "").replace("\n", " ")
+        if len(snippet) > 80:
+            snippet = snippet[:77] + "..."
+        print(f"  {ev.timestamp}  [{ev.source}/{ev.type}]  {snippet}")
     return 0
 
 
@@ -444,6 +489,16 @@ def build_parser() -> argparse.ArgumentParser:
     ps.add_argument("--embedder", default="ollama", help="Embedder a usar con --semantic.")
     ps.add_argument("--limit", type=int, default=50)
 
+    sub.add_parser("people", help="Lista personas en tu contexto (unifica alias).")
+
+    pal = sub.add_parser("alias", help="Une alias bajo una identidad (mismo 'Juan').")
+    pal.add_argument("canonical", help="Nombre canónico (el que quieres conservar).")
+    pal.add_argument("aliases", nargs="+", help="Alias a unir bajo el canónico.")
+
+    pper = sub.add_parser("person", help="Eventos donde aparece una persona.")
+    pper.add_argument("name")
+    pper.add_argument("--limit", type=int, default=100)
+
     pt = sub.add_parser("timeline", help="Lista eventos por orden cronológico.")
     pt.add_argument("--since")
     pt.add_argument("--until")
@@ -488,6 +543,9 @@ _DISPATCH = {
     "ingest": cmd_ingest,
     "stats": cmd_stats,
     "status": cmd_status,
+    "people": cmd_people,
+    "alias": cmd_alias,
+    "person": cmd_person,
     "index": cmd_index,
     "search": cmd_search,
     "timeline": cmd_timeline,

@@ -176,6 +176,9 @@ python -m prisma.cli ingest --importer jsonl examples/sample.jsonl
 python -m prisma.cli status                                 # vista de pájaro del cerebro
 python -m prisma.cli stats                                  # eventos por fuente
 python -m prisma.cli search contrato                        # busca cruzando fuentes
+python -m prisma.cli people                                 # personas en tu contexto
+python -m prisma.cli alias "Juan Pérez" Juan +34600111222   # unifica alias entre fuentes
+python -m prisma.cli person Juan                            # todo lo de Juan, cruzando fuentes
 python -m prisma.cli timeline --since 2026-02-01T00:00:00Z  # línea temporal unificada
 ```
 

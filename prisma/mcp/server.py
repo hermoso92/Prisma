@@ -67,6 +67,18 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "get_person",
+        "description": "Eventos donde aparece una persona, cruzando todas las fuentes (unifica alias).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "limit": {"type": "integer", "default": 100},
+            },
+            "required": ["name"],
+        },
+    },
+    {
         "name": "summarize_period",
         "description": (
             "Devuelve los eventos de un periodo para que tú (el modelo) los resumas. "
@@ -137,15 +149,17 @@ class McpServer:
     """Maneja mensajes MCP contra un :class:`MetadataStore`."""
 
     def __init__(self, store: MetadataStore, embedder_name: str = "ollama",
-                 objects=None, render_dir=None) -> None:
+                 objects=None, render_dir=None, resolve=None) -> None:
         self.store = store
         self.embedder_name = embedder_name
         self.objects = objects
         self.render_dir = render_dir
+        self.resolve = resolve  # IdentityMap.resolve, para unificar personas
         self._handlers: dict[str, Callable[[dict], dict]] = {
             "search_context": self._t_search,
             "get_timeline": self._t_timeline,
             "get_thread": self._t_thread,
+            "get_person": self._t_person,
             "summarize_period": self._t_summarize,
             "stats": self._t_stats,
             "find_photos": self._t_find_photos,
@@ -237,6 +251,13 @@ class McpServer:
         title = events[0].title or args["thread_id"]
         body = "\n".join(f"{ev.timestamp} — {self._who(ev)}: {ev.content}" for ev in events)
         return self._text(f"# {title}\n{body}")
+
+    def _t_person(self, args: dict) -> dict:
+        events = self.store.events_by_person(
+            args["name"], resolve=self.resolve, limit=int(args.get("limit", 100)))
+        if not events:
+            return self._text(f"Sin eventos de «{args['name']}».")
+        return self._text("\n".join(self._fmt(ev) for ev in events))
 
     def _t_summarize(self, args: dict) -> dict:
         events = list(self.store.timeline(

@@ -349,8 +349,9 @@ sistema. Plan en pasadas para no perder el bosque por un árbol:
 
 1. **Consolidar / ver el bosque** ✅ — `prisma status` (vista de pájaro del
    cerebro: fuentes, rango temporal, cobertura de embeddings, análisis, fotos).
-2. **Reforzar el CEREBRO** ⬜ — resolución de identidades entre fuentes (mismo
-   "Juan" en WhatsApp y fotos) y medir/mejorar la calidad del RAG.
+2. **Reforzar el CEREBRO** 🟡 — resolución de identidades ✅ (`IdentityMap`:
+   alias→canónico; comandos `people`/`alias`/`person` y tool MCP `get_person`);
+   pendiente: medir/mejorar la calidad del RAG con embeddings reales.
 3. **Completar FUENTES (APIs vivas)** ⬜ — Google Photos, Gmail, Calendar, Drive
    vía OAuth, usando el gestor de secretos existente. Cierra la flecha "—API—".
 4. **Validar con datos reales** ⬜ — prueba de punta a punta en el Mac del usuario

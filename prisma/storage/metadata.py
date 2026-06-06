@@ -187,6 +187,34 @@ class MetadataStore:
         for row in self._conn.execute(sql, params):
             yield self._row_to_event(row)
 
+    def people_counts(self, resolve: Optional[Any] = None) -> dict[str, int]:
+        """Cuenta apariciones por persona en todos los eventos.
+
+        ``resolve`` es una función ``nombre -> canónico`` (p. ej.
+        ``IdentityMap.resolve``) para unificar alias entre fuentes.
+        """
+        resolve = resolve or (lambda n: n)
+        counts: dict[str, int] = {}
+        for row in self._conn.execute("SELECT people FROM events WHERE people <> '[]'"):
+            for name in json.loads(row["people"]):
+                canon = resolve(name)
+                counts[canon] = counts.get(canon, 0) + 1
+        return dict(sorted(counts.items(), key=lambda kv: -kv[1]))
+
+    def events_by_person(
+        self, canonical: str, resolve: Optional[Any] = None, limit: Optional[int] = None
+    ) -> list[Event]:
+        """Eventos donde aparece la persona (resolviendo alias), por orden temporal."""
+        resolve = resolve or (lambda n: n)
+        target = resolve(canonical)
+        out: list[Event] = []
+        for ev in self.timeline():
+            if any(resolve(p) == target for p in ev.people):
+                out.append(ev)
+                if limit and len(out) >= limit:
+                    break
+        return out
+
     def thread(self, thread_id: str) -> list[Event]:
         """Reconstruye una conversación: sus eventos por orden cronológico."""
         rows = self._conn.execute(
