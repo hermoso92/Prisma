@@ -30,18 +30,22 @@ Importer → [Analyzer] → MetadataStore (SQLite) + ObjectStore (content-addres
 ```
 
 - **`Importer`** — uno por fuente: ChatGPT, Claude, WhatsApp, fotos/vídeos, notas,
-  Google Keep, jsonl. Acepta ZIP / carpeta / fichero.
-- **`Analyzer`** — visión (Ollama), OCR (Tesseract), transcripción (Whisper), o
-  `local` (los tres). **100% local, gratis, con degradación elegante**: si falta
-  una herramienta, el medio se ingiere igual (solo sin esa parte).
+  Google Keep, **Google Photos (API viva, OAuth)**, jsonl. Acepta ZIP/carpeta/fichero/API.
+- **`Analyzer`** — visión (Ollama), OCR (Tesseract), transcripción (Whisper),
+  detección de personas/animales (YOLO) y reconocimiento facial (`is_only_me`), o
+  `local` (todo). **100% local, gratis, con degradación elegante**: si falta una
+  herramienta, el medio se ingiere igual (solo sin esa parte).
 - **`Embedder`** — Ollama `nomic-embed-text` (semántico real) o `hashing` (léxico,
   offline, sin dependencias) para usar/probar la búsqueda vectorial sin Ollama.
-- **Almacenamiento** — SQLite (eventos, timeline, búsqueda, embeddings) + object
-  store *content-addressed* por SHA-256 (deduplica binarios idénticos). Secretos en
-  el **Llavero de macOS** (opt-in) o solo en memoria; nunca en disco en texto plano.
-- **MCP server** — JSON-RPC 2.0 sobre stdio, sin dependencias. Expone 5 tools
-  (`search_context`, `get_timeline`, `get_thread`, `summarize_period`, `stats`).
-  El servidor solo lee la base y devuelve texto; **la inteligencia la pone Claude**.
+- **Identidades** — `IdentityMap` unifica alias entre fuentes (mismo "Juan").
+- **Almacenamiento** — SQLite (eventos, timeline, búsqueda, embeddings, atributos) +
+  object store *content-addressed* por SHA-256 (deduplica). Secretos en el **Llavero
+  de macOS** (opt-in) o solo en memoria; nunca en disco en texto plano.
+- **Render** — collage (Pillow) y vídeo/slideshow (ffmpeg) a partir de un filtro.
+- **MCP server** — JSON-RPC 2.0 sobre stdio, sin dependencias. Expone 9 tools
+  (`search_context`, `get_timeline`, `get_thread`, `get_person`, `summarize_period`,
+  `stats`, `find_photos`, `make_collage`, `make_video`). El servidor solo lee la
+  base y devuelve texto; **la inteligencia la pone Claude**.
 
 **Sin dependencias externas:** solo biblioteca estándar de Python (`sqlite3`,
 `urllib`, `hashlib`, `array`, `struct`…). Local, gratis, instalable con `pipx`,
@@ -63,18 +67,21 @@ nada: la base `Event` ya sostenía todo lo demás.
 | 3 | WhatsApp + onboarding guiado + secretos + Ollama | mocks de `security` / HTTP |
 | 4 | Embeddings + búsqueda semántica (coseno) | ranking verificado |
 | 5 | Servidor MCP | handshake + tools por stdio |
-| 6 | Notas (texto/Markdown) + Google Keep (Takeout) | e2e |
+| 6 | Notas, Google Keep, Google Photos (API) | e2e / HTTP mockeado |
+| + | Atributos de foto (personas/animales/identidad) → collage/vídeo | stubs deterministas |
+| + | Identidades entre fuentes, `status`, `verify` | e2e |
 
 ---
 
 ## Cómo se comprueba que funciona (comprobado, no solo afirmado)
 
-- **Tests:** 97 casos (`python -m unittest discover -s tests`), todos verdes.
+- **Tests:** 126 casos (`python -m unittest discover -s tests`), todos verdes.
 - **CI:** GitHub Actions en Ubuntu (Python 3.10/3.11/3.12) + macOS 3.12.
 - **Instalación limpia:** `pip install -e .` en un venv nuevo y comando `prisma`.
-- **Integración real:** las **7 fuentes** ingeridas a la vez → 14 eventos en una
-  base → `stats`, `timeline`, búsqueda semántica y MCP **cruzando fuentes**
-  correctamente.
+- **Integración real:** las fuentes ingeridas a la vez en una base → `stats`,
+  `timeline`, búsqueda semántica, identidades y MCP **cruzando fuentes**.
+- **Autodiagnóstico:** `prisma verify` prueba el pipeline completo de punta a punta
+  (no destructivo) y lista las capacidades opcionales del equipo.
 
 ### Flujo completo (todo local)
 
