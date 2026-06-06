@@ -245,7 +245,7 @@ Rebanadas verticales: cada fase entrega algo usable de punta a punta.
 | **3** | Mensajería | Importador **WhatsApp** (export manual guiado) | ✅ |
 | **4** | Recuperación | **Embeddings** locales (Ollama) + búsqueda semántica por coseno | ✅ |
 | **5** | Asistente | **Servidor MCP** (stdio, sin dependencias) → conectado a Claude | ✅ |
-| **6+** | Más fuentes | **Notas** (texto/Markdown) y **Google Keep** (Takeout) ✅; Gmail, Calendar, Drive… ⬜ | 🟡 |
+| **6+** | Más fuentes | **Notas**, **Google Keep**, **Google Photos (API)** ✅; Gmail, Calendar, Drive… ⬜ | 🟡 |
 
 **Por qué este orden:** ChatGPT/Claude primero = victoria rápida y motivadora
 (JSON estructurado). Fotos después = donde se ve la "magia" multimodal. WhatsApp
@@ -352,8 +352,9 @@ sistema. Plan en pasadas para no perder el bosque por un árbol:
 2. **Reforzar el CEREBRO** 🟡 — resolución de identidades ✅ (`IdentityMap`:
    alias→canónico; comandos `people`/`alias`/`person` y tool MCP `get_person`);
    pendiente: medir/mejorar la calidad del RAG con embeddings reales.
-3. **Completar FUENTES (APIs vivas)** ⬜ — Google Photos, Gmail, Calendar, Drive
-   vía OAuth, usando el gestor de secretos existente. Cierra la flecha "—API—".
+3. **Completar FUENTES (APIs vivas)** 🟡 — Google Photos ✅ (importador `gphotos`
+   vía la Library API + OAuth con el gestor de secretos, paginación y descarga al
+   object store); pendiente: Gmail, Calendar, Drive. Cierra la flecha "—API—".
 4. **Validar con datos reales** ⬜ — prueba de punta a punta en el Mac del usuario
    con exports reales y modelos locales; ajustar umbrales; conectar MCP a Claude.
 

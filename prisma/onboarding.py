@@ -150,8 +150,14 @@ Opción B — Google Fotos vía Takeout (https://takeout.google.com):
 3. Ingiere la carpeta (Prisma lee la fecha y el GPS de los sidecars .json):
      prisma ingest --importer photos RUTA/Takeout/Google\\ Photos --analyzer ollama
 
+Opción C — Google Photos API (en vivo, sin descargar export):
+1. Consigue un token OAuth con scope photoslibrary.readonly (p. ej. en
+   OAuth Playground) y guárdalo seguro:  prisma secret set google
+2. Ingiere directamente desde la API:
+     prisma ingest --importer gphotos --analyzer ollama
+
 ℹ️  Con --analyzer ollama, tu Mac describe cada foto en local (necesita Ollama).
-   Sin él, se guardan igual con su fecha y ubicación.""",
+   Sin él, se guardan igual con su fecha. (La API de Google no expone el GPS.)""",
 
     "notas": """📦 Notas
 

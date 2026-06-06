@@ -48,6 +48,15 @@ def cmd_init(args: argparse.Namespace, cfg: Config) -> int:
     return 0
 
 
+def _google_token(args: argparse.Namespace) -> str:
+    """Obtiene el token de Google del entorno o del Llavero (nunca de disco en claro)."""
+    import os
+    tok = os.environ.get("PRISMA_GOOGLE_TOKEN")
+    if tok:
+        return tok
+    return get_secret_store(use_keychain=True).get("google") or ""
+
+
 def cmd_ingest(args: argparse.Namespace, cfg: Config) -> int:
     importer_cls = REGISTRY.get(args.importer)
     if importer_cls is None:
@@ -57,22 +66,26 @@ def cmd_ingest(args: argparse.Namespace, cfg: Config) -> int:
             file=sys.stderr,
         )
         return 2
-    path = Path(args.path)
-    if not path.exists():
-        print(f"No existe la ruta: {path}", file=sys.stderr)
+    needs_path = args.importer != "gphotos"  # gphotos es API viva, sin ruta local
+    path = Path(args.path) if args.path else None
+    if needs_path and (path is None or not path.exists()):
+        print(f"Falta una ruta válida para --importer {args.importer}.", file=sys.stderr)
         return 2
 
     cfg.ensure_dirs()
     objects = ObjectStore(cfg.objects_dir)
 
-    # Opciones específicas de algunos importadores (p. ej. WhatsApp).
+    # Opciones específicas de algunos importadores.
     extra = {}
     if args.importer == "whatsapp":
         if args.me:
             extra["me"] = args.me
         if args.chat_name:
             extra["chat_name"] = args.chat_name
-    importer = importer_cls(source_path=path, objects=objects, **extra)
+    if args.importer == "gphotos":
+        extra["access_token"] = _google_token(args)
+    src = None if args.importer == "gphotos" else path
+    importer = importer_cls(source_path=src, objects=objects, **extra)
 
     try:
         analyzer = get_analyzer(args.analyzer)
@@ -80,8 +93,13 @@ def cmd_ingest(args: argparse.Namespace, cfg: Config) -> int:
         print(exc, file=sys.stderr)
         return 2
     analyzer.configure(cfg)  # p. ej. el reconocimiento facial necesita cfg.faces_dir
+    from prisma.importers.google_photos import GooglePhotosError
     with _store(cfg) as store:
-        result = Pipeline(store, objects=objects, analyzer=analyzer).ingest(importer)
+        try:
+            result = Pipeline(store, objects=objects, analyzer=analyzer).ingest(importer)
+        except GooglePhotosError as exc:
+            print(f"{exc}", file=sys.stderr)
+            return 1
     print(result)
     return 0
 
@@ -473,7 +491,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     pi.add_argument("--me", help="(WhatsApp) Tu nombre tal cual aparece, para marcarte como «yo».")
     pi.add_argument("--chat-name", dest="chat_name", help="(WhatsApp) Nombre del chat/grupo.")
-    pi.add_argument("path", help="Ruta al export/archivo/carpeta a ingerir.")
+    pi.add_argument("path", nargs="?",
+                    help="Ruta al export/archivo/carpeta (no aplica a gphotos, que es API).")
 
     sub.add_parser("stats", help="Conteo de eventos por fuente.")
     sub.add_parser("status", help="Vista de pájaro de todo el cerebro (el bosque entero).")

@@ -230,6 +230,7 @@ prisma/
     photos.py          # importador de fotos/vídeos (carpeta + sidecar Takeout)
     notes.py           # importador de notas de texto/Markdown (Apple Notes export…)
     keep.py            # importador de Google Keep (Takeout)
+    google_photos.py   # importador de Google Photos (API viva, OAuth)
   analysis/
     base.py            # interfaz Analyzer (caption/OCR/transcripción) + registro
     null.py            # analizador por defecto (no analiza; solo metadatos)
